@@ -1,3 +1,12 @@
+from setuptools.extension import Extension
+from Cython.Distutils import build_ext
+
+EXT_MODULES_INFO = [Extension("infi.tracing.ctracing",
+               language="c++",
+               sources=["src/infi/tracing/ctracing.pyx"],
+               include_dirs=["src/infi/tracing"],
+               define_macros=[("_REENTRANT", 1)],
+               libraries=["stdc++"])]
 
 SETUP_INFO = dict(
     name = '${project:name}',
@@ -32,6 +41,10 @@ SETUP_INFO = dict(
         console_scripts = ${project:console_scripts},
         gui_scripts = ${project:gui_scripts},
         ),
+
+    ext_modules = EXT_MODULES_INFO,
+
+    cmdclass = {'build_ext': build_ext}
 )
 
 if SETUP_INFO['url'] is None:
