@@ -38,4 +38,6 @@ src/infi/hello/__version__.py
 
 
 src/infi/tracing/__version__.py
+src/infi/tracing/ctracing.cpp
+Cython*
 bootstrap.py

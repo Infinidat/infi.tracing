@@ -15,7 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 
 print sys.path
 
-from infi.tracing import set_profile, unset_profile
+from infi.tracing import set_profile, unset_profile, NO_TRACE, TRACE_FUNC_NAME
 
 
 @contextmanager
@@ -25,7 +25,7 @@ def benchmark(label):
         yield
     finally:
         end = time()
-        print("{} time: {}".format(label, end - start))
+        print("{} time: {:.4f}".format(label, end - start))
 
 
 def bar():
@@ -41,15 +41,14 @@ with benchmark("no profile set"):
         foo()
 
 
-set_profile()
+def trace_filter(code):
+    print("trace_filter {}".format(code.co_name))
+    return NO_TRACE
 
-def should_trace(code):
-    print("should_trace {}".format(code))
-    return False
-import cytest.native
-cytest.native.should_trace_code = should_trace
 
-with benchmark("cytest_setprofile set"):
+set_profile(trace_filter)
+
+with benchmark("infi.tracing.set_profile set"):
     for i in xrange(1000000):
         foo()
 

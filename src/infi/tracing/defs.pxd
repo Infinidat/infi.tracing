@@ -2,8 +2,12 @@ from cpython.ref cimport PyObject
 from libcpp cimport bool
 
 cdef extern from "pthread.h":
-    ctypedef int pthread_t
+    ctypedef long pthread_t
+    ctypedef long pthread_key_t
     pthread_t pthread_self() nogil
+    long pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) nogil
+    long pthread_getspecific(pthread_key_t key) nogil
+    void pthread_setspecific(pthread_key_t key, void* value) nogil
 
 cdef extern from "frameobject.h":
     ctypedef struct PyCodeObject:
@@ -34,6 +38,7 @@ cdef extern from "greenlet.h":
     ctypedef struct PyGreenlet
     void PyGreenlet_Import()
     PyGreenlet* PyGreenlet_GetCurrent()
+    void** _PyGreenlet_API
 
 cdef extern from "stdlib.h":
     void printf(const char* format, ...)
