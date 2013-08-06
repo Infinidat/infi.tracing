@@ -1,0 +1,14 @@
+Benchmarks and expectations
+===========================
+
+All benchmarks were done on the following setup:
+- Ubuntu 12.10 x64
+- Python 2.7.2
+- 2 i7 L640 CPUs 2.13GHz
+- 6GB RAM
+- Transcend 128GB SSD
+
+tests/benchmark_test.py:
+  - no setprofile: 0.7638 seconds for 1000000 iterations (~1309243 iters/sec)
+  - current ctracing setprofile: 2.0446 seconds for 1000000 iterations (~489093 iters/sec)
+  - slowdown: x2.67

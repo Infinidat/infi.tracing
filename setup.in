@@ -46,7 +46,9 @@ def build_ext_modules():
                sources=["src/infi/tracing/ctracing.pyx"],
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
-               libraries=["stdc++"])]
+               libraries=["stdc++"],
+               extra_compile_args=["-std=c++11"],
+               extra_link_args=["-std=c++11"])]
 
 def setup():
     from setuptools import setup as _setup

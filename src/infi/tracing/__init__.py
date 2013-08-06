@@ -1,8 +1,11 @@
 __import__("pkg_resources").declare_namespace(__name__)
 import sys
+from infi.pyutils.contexts import contextmanager
+from infi.pyutils.decorators import wraps
 
-__all__ = ['set_profile', 'unset_profile', 'set_func_cache_size', 'NO_TRACE', 'NO_TRACE_NESTED', 
-           'TRACE_FUNC_NAME', 'TRACE_FUNC_PRIMITIVES', 'TRACE_FUNC_REPR']
+__all__ = ['set_profile', 'unset_profile', 'set_func_cache_size', 'disable_profile', 'enable_profile',
+           'no_profile_context',
+           'NO_TRACE', 'NO_TRACE_NESTED', 'TRACE_FUNC_NAME', 'TRACE_FUNC_PRIMITIVES', 'TRACE_FUNC_REPR']
 
 # Same as in ctracing:
 NO_TRACE              = 0
@@ -29,3 +32,27 @@ def set_func_cache_size(size):
     and which level of tracing should be done."""
     from infi.tracing.ctracing import ctracing_set_func_cache_size
     ctracing_set_func_cache_size(size)
+
+def disable_profile():
+    from infi.tracing.ctracing import ctracing_set_enabled
+    ctracing_set_enabled(False)
+
+def enable_profile():
+    from infi.tracing.ctracing import ctracing_set_enabled
+    ctracing_set_enabled(True)
+
+@contextmanager
+def no_profile_context():
+    try:
+        disable_profile()
+        yield
+    finally:
+        enable_profile()
+
+def no_profile(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with no_profile_context():
+            return func(*args, **kwargs)
+    return wrapper
+

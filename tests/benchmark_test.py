@@ -12,6 +12,7 @@ ver = "{}.{}".format(python_major_ver, python_minor_ver)
 
 sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 print sys.path
 
