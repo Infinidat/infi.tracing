@@ -10,7 +10,7 @@ cdef enum:
     TRACE_FUNC_PRIMITIVES = 3
     TRACE_FUNC_REPR       = 4
 
-    CLEANUP_CYCLES        = 10000  # Every 10k calls iterate over our greenlets and clean up greenlets that are done.
+    CLEANUP_CYCLES        = 100000  # Every 10k calls iterate over our greenlets and clean up greenlets that are done.
 
 cdef extern from "thread_storage.h":
     cdef enum: NESTED_NO_TRACE_DISABLED "NESTED_NO_TRACE_DISABLED"
@@ -57,6 +57,12 @@ cdef inline ThreadStorage* find_or_create_thread_storage(PyGreenlet* greenlet) n
 
     return &thread_storage_map[<long>greenlet]
 
+cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrameObject* frame) with gil:
+    global trace_level_func_cache
+    cdef int trace_level = int((<object>filter_func)(<object>frame.f_code))
+    trace_level_func_cache.insert(<long>frame.f_code, trace_level)
+    return trace_level
+
 cdef inline int find_trace_level_or_call_filter(PyFrameObject* frame, PyObject* filter_func) nogil:
     global trace_level_func_cache
     cdef int trace_level
@@ -66,9 +72,7 @@ cdef inline int find_trace_level_or_call_filter(PyFrameObject* frame, PyObject* 
     if code_found != trace_level_func_cache.end():
         trace_level = code_found.value()
     else:
-        with gil:
-            trace_level = int((<object>filter_func)(<object>frame.f_code))
-        trace_level_func_cache.insert(<long>frame.f_code, trace_level)
+        trace_level = call_filter_and_store_trace_level(filter_func, frame)
     return trace_level
 
 cdef inline PyGreenlet* current_greenlet_and_cleanup() with gil:
@@ -81,33 +85,35 @@ cdef inline PyGreenlet* current_greenlet_and_cleanup() with gil:
     cdef PyGreenlet* greenlet
 
     greenlet = PyGreenlet_GetCurrent()
-    inc(cleanup_counter)
     if cleanup_counter > CLEANUP_CYCLES:
         cleanup_greenlet_thread_storage_map()
     return greenlet
 
 cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int what, PyObject* arg) nogil:
+    global cleanup_counter
     cdef:
         PyGreenlet* greenlet
         int trace_level = NO_TRACE
         long depth, nested_no_trace_depth
         ThreadStorage* tstore
 
+    inc(cleanup_counter)
     greenlet = current_greenlet_and_cleanup()
 
     tstore = find_or_create_thread_storage(greenlet)
     if not tstore.enabled:
         return 0
-        
+
     if what == PyTrace_CALL:
         inc(tstore.depth)
         depth = tstore.depth
-    elif (what == PyTrace_EXCEPTION) or (what == PyTrace_RETURN):
+    elif what == PyTrace_RETURN:
         depth = tstore.depth
         dec(tstore.depth)
     else:
         # We don't trace through C calls, so we don't check the following:
         # PyTrace_C_CALL, PyTrace_C_EXCEPTION, PyTrace_C_RETURN
+        # Also, PyTrace_EXCEPTION cannot happen with a profile function.
         return 0
 
     nested_no_trace_depth = tstore.nested_no_trace_depth
@@ -126,19 +132,19 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         tstore.nested_no_trace_depth = depth
         return 0
 
-    if what == PyTrace_CALL:  # arg is NULL
-        with gil:
-            print("> ({}) {}".format(depth, (<object>frame.f_code).co_name))
-    elif what == PyTrace_EXCEPTION:  # arg is the tuple returned from sys.exc_info()
-        with gil:
-            print("< ({}) Exception".format(depth, (<object>frame.f_code).co_name))
-    elif what == PyTrace_RETURN:  # arg is value returned to the caller
-        if arg == NULL:
-            with gil:
-                print("< ({}) {} : NULL (Exception)".format(depth, (<object>frame.f_code).co_name))
-        else:
-            with gil:
-                print("< ({}) {} : {}".format(depth, (<object>frame.f_code).co_name, <object>arg))
+    # if what == PyTrace_CALL:  # arg is NULL
+    #     with gil:
+    #         print("> ({}) {}".format(depth, (<object>frame.f_code).co_name))
+    # elif what == PyTrace_EXCEPTION:  # arg is the tuple returned from sys.exc_info()
+    #     with gil:
+    #         print("< ({}) Exception".format(depth, (<object>frame.f_code).co_name))
+    # elif what == PyTrace_RETURN:  # arg is value returned to the caller
+    #     if arg == NULL:
+    #         with gil:
+    #             print("< ({}) {} : NULL (Exception)".format(depth, (<object>frame.f_code).co_name))
+    #     else:
+    #         with gil:
+    #             print("< ({}) {} : {}".format(depth, (<object>frame.f_code).co_name, <object>arg))
 
     return 0
 

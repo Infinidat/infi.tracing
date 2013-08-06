@@ -12,3 +12,9 @@ tests/benchmark_test.py:
   - no setprofile: 0.7638 seconds for 1000000 iterations (~1309243 iters/sec)
   - current ctracing setprofile: 2.0446 seconds for 1000000 iterations (~489093 iters/sec)
   - slowdown: x2.67
+
+
+running izbox-mock system till we get to only:
+  - w/o tracing: ~6.1 seconds
+  - w/ tracing that only fetch the greenlet and does cleanup once ever 100k call/returns: ~6.7-7.4 seconds
+  - w/ tracing but w/o writing to a buffer: 7.9-8.4 seconds
