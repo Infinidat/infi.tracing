@@ -54,7 +54,7 @@ def trace_filter(code):
         return NO_TRACE
     if code.co_name == "nested_notrace_foo":
         return NO_TRACE_NESTED
-    return NO_TRACE
+    return TRACE_FUNC_NAME
 
 
 print("setting profile")
@@ -76,4 +76,7 @@ print("calling foo_with_exception")
 foo_with_exception()
 
 print("all done, unsetting profile")
+
+from infi.tracing.ctracing import call_log
+print("call_log size: {}".format(len(call_log)))
 unset_profile()

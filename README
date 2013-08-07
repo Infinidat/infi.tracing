@@ -14,7 +14,21 @@ tests/benchmark_test.py:
   - slowdown: x2.67
 
 
-running izbox-mock system till we get to only:
-  - w/o tracing: ~6.1 seconds
-  - w/ tracing that only fetch the greenlet and does cleanup once ever 100k call/returns: ~6.7-7.4 seconds
-  - w/ tracing but w/o writing to a buffer: 7.9-8.4 seconds
+running izbox-mock system till we get to online:
+  - completely w/o tracing: 3.79, 3.83, 4.04, 3.84, 3.74: avg 3.84
+  - w/ tracing enabled, filter returns NO_TRACE: 4.08, 4.08, 3.8, 4.05, 3.78: avg 3.95 (~2.8% time inc)
+  - w/ tracing enabled, filter src/izbox, just take GIL: 4.11+ 3.8+ 3.78+ 4.15+ 3.8: avg 3.93 (~2.3% time inc)
+  - w/ tracing, filter src/izbox, enqueue fname/line to array: 4.82, 4.76, 5.44, 4.85, 5.43: avg 5.06 (~31.7% time inc)
+  - w/ tracing, filter src/izbox, enqueue formatted string to array: 
+
+
+
+Determining the current greenlet and thread
+===========================================
+1. First method tried: using API calls (PyGreenlet_Current(), etc.). Problem is that they require GIL and that makes
+   them slow.
+
+Some things noticed when experimenting:
+- frame->f_back is 0 when switching to a new greenlet.
+- frame->f_tstate correponds to a (posix) thread.
+- thread id can be obtained by doing: frame->f_tstate->thread_id

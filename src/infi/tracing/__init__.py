@@ -3,8 +3,8 @@ import sys
 from infi.pyutils.contexts import contextmanager
 from infi.pyutils.decorators import wraps
 
-__all__ = ['set_profile', 'unset_profile', 'set_func_cache_size', 'disable_profile', 'enable_profile',
-           'no_profile_context',
+__all__ = ['set_tracing', 'unset_tracing', 'set_func_cache_size', 'suspend_tracing', 'resume_tracing',
+           'no_tracing_context_recursive', 'no_tracing_recursive',
            'NO_TRACE', 'NO_TRACE_NESTED', 'TRACE_FUNC_NAME', 'TRACE_FUNC_PRIMITIVES', 'TRACE_FUNC_REPR']
 
 # Same as in ctracing:
@@ -18,12 +18,12 @@ def _filter_all(*args, **kwargs):
     return True
 
 
-def set_profile(filter_func=_filter_all):
+def set_tracing(filter_func=_filter_all):
     from infi.tracing.ctracing import ctracing_set_profile
     ctracing_set_profile(filter_func)
 
 
-def unset_profile():
+def unset_tracing():
     sys.setprofile(None)
 
 
@@ -33,26 +33,28 @@ def set_func_cache_size(size):
     from infi.tracing.ctracing import ctracing_set_func_cache_size
     ctracing_set_func_cache_size(size)
 
-def disable_profile():
-    from infi.tracing.ctracing import ctracing_set_enabled
-    ctracing_set_enabled(False)
 
-def enable_profile():
-    from infi.tracing.ctracing import ctracing_set_enabled
-    ctracing_set_enabled(True)
+def suspend_tracing():
+    from infi.tracing.ctracing import suspend
+    suspend()
+
+
+def resume_tracing():
+    from infi.tracing.ctracing import resume
+    resume()
+
 
 @contextmanager
-def no_profile_context():
+def no_tracing_context_recursive():
     try:
-        disable_profile()
+        suspend_tracing()
         yield
     finally:
-        enable_profile()
+        resume_tracing()
 
-def no_profile(func):
+def no_tracing_recursive(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with no_profile_context():
+        with no_tracing_context_recursive():
             return func(*args, **kwargs)
     return wrapper
-

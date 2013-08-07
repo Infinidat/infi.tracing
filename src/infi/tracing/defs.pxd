@@ -10,13 +10,20 @@ from libcpp cimport bool
 #     long pthread_getspecific(pthread_key_t key) nogil
 #     void pthread_setspecific(pthread_key_t key, void* value) nogil
 
+cdef extern from "pystate.h":
+    ctypedef struct PyThreadState:
+        long thread_id
+
 cdef extern from "frameobject.h":
     ctypedef struct PyCodeObject:
         PyObject* co_name
+        PyObject* co_filename
         int co_flags
 
     ctypedef struct PyFrameObject:
+        PyFrameObject* f_back
         PyCodeObject* f_code
+        PyThreadState* f_tstate
 
     int PyFrame_GetLineNumber(PyFrameObject*)
 
@@ -43,7 +50,7 @@ cdef extern from "greenlet.h":
     void** _PyGreenlet_API
 
 cdef extern from "stdlib.h":
-    void printf(const char* format, ...)
+    void printf(const char* format, ...) nogil
 
 cdef extern from "lru.hpp" namespace "plb":
     cdef cppclass LRUCacheH4ConstIterator[K, V]:
