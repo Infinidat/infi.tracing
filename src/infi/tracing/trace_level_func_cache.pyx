@@ -4,7 +4,7 @@ cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrame
     global trace_level_func_cache
     cdef int trace_level
 
-    trace_level_result = (<object>filter_func)(<object>frame.f_code)
+    trace_level_result = (<object>filter_func)(<object>frame)
     if trace_level_result is None:
         print("trace_level_result is None w/ frame: {} (filter: {})".format(<object>frame.f_code, <object>filter_func))
     trace_level = int(trace_level_result)

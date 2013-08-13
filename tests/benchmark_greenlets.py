@@ -51,8 +51,8 @@ def foo():
 cytest_setprofile()
 import cytest.native
 
-def should_trace(code):
-    print("should_trace {}".format(code))
+def should_trace(frame):
+    print("should_trace {}".format(frame))
     return False
 
 cytest.native.should_trace_code = should_trace

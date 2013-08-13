@@ -23,11 +23,14 @@ cdef extern from "frameobject.h":
     ctypedef struct PyFrameObject:
         PyFrameObject* f_back
         PyCodeObject* f_code
+        PyObject* f_globals
         PyThreadState* f_tstate
 
     int PyFrame_GetLineNumber(PyFrameObject*)
 
 cdef extern from "Python.h":
+    char* PyString_AsString(PyObject*)
+
     ctypedef int (*Py_tracefunc)(PyObject*, PyFrameObject*, int, PyObject*)
 
     void PyEval_SetProfile(Py_tracefunc func, PyObject* arg)

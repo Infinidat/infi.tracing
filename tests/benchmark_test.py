@@ -16,7 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 print sys.path
 
-from infi.tracing import set_profile, unset_profile, NO_TRACE, TRACE_FUNC_NAME
+from infi.tracing import set_tracing, unset_tracing, NO_TRACE, TRACE_FUNC_NAME
 
 
 @contextmanager
@@ -42,15 +42,15 @@ with benchmark("no profile set"):
         foo()
 
 
-def trace_filter(code):
-    print("trace_filter {}".format(code.co_name))
+def trace_filter(frame):
+    print("trace_filter {}".format(frame.f_code.co_name))
     return NO_TRACE
 
 
-set_profile(trace_filter)
+set_tracing(trace_filter)
 
-with benchmark("infi.tracing.set_profile set"):
+with benchmark("infi.tracing.set_tracing set"):
     for i in xrange(1000000):
         foo()
 
-unset_profile()
+unset_tracing()

@@ -13,7 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 
 print sys.path
 
-from infi.tracing import set_profile, unset_profile, TRACE_FUNC_NAME
+from infi.tracing import set_tracing, unset_tracing, TRACE_FUNC_NAME
 from greenlet import getcurrent, greenlet, GreenletExit
 
 def g1_bar():
@@ -49,10 +49,10 @@ def k1():
     print("k1")
     k2()
 
-def trace_filter(code):
+def trace_filter(frame):
     return TRACE_FUNC_NAME
 
-set_profile(trace_filter)
+set_tracing(trace_filter)
 
 g1 = greenlet(g1_foo)
 g2 = greenlet(g2_foo)
@@ -77,5 +77,5 @@ k.switch()
 print("killing k")
 k.throw()
 
-unset_profile()
+unset_tracing()
 print("done.")

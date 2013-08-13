@@ -8,23 +8,43 @@ All benchmarks were done on the following setup:
 - 6GB RAM
 - Transcend 128GB SSD
 
+
+Running izbox-mock system till we get to online tests
+-----------------------------------------------------
+
+no tracing: 3.79, 3.83, 4.04, 3.84, 3.74: avg 3.84
+trace 1   : 4.08, 4.08, 3.8, 4.05, 3.78 : avg 3.95 (~2.8% time inc)
+trace 2   : 4.11, 3.8, 3.78, 4.15, 3.8  : avg 3.93 (~2.3% time inc)
+trace 3   : 4.82, 4.76, 5.44, 4.85, 5.43: avg 5.06 (~31.7% time inc)
+trace 4   : 5.05, 5.03, 4.51, 4.3, 5.08 : avg 4.79 (~24.7% time inc)
+
+trace 1:
+ - filter returns NO_TRACE
+
+trace 2:
+  - filter: accept src/izbox
+  - just take GIL
+
+trace 3:
+  - filter: accept src/izbox
+  - Python enqueue fname/line to array
+
+trace 4:
+  - filter: accept src/izbox, reject izbox.utils.container and izbox.state_machine.fysom._is_base_string
+  - cython fprintf to log file gid,depth,module,func,fname,line (not serializing args)
+
+
+Old Notes (not reflecting current code)
+=======================================
+
 tests/benchmark_test.py:
   - no setprofile: 0.7638 seconds for 1000000 iterations (~1309243 iters/sec)
   - current ctracing setprofile: 2.0446 seconds for 1000000 iterations (~489093 iters/sec)
   - slowdown: x2.67
 
 
-running izbox-mock system till we get to online:
-  - completely w/o tracing: 3.79, 3.83, 4.04, 3.84, 3.74: avg 3.84
-  - w/ tracing enabled, filter returns NO_TRACE: 4.08, 4.08, 3.8, 4.05, 3.78: avg 3.95 (~2.8% time inc)
-  - w/ tracing enabled, filter src/izbox, just take GIL: 4.11+ 3.8+ 3.78+ 4.15+ 3.8: avg 3.93 (~2.3% time inc)
-  - w/ tracing, filter src/izbox, enqueue fname/line to array: 4.82, 4.76, 5.44, 4.85, 5.43: avg 5.06 (~31.7% time inc)
-  - w/ tracing, filter src/izbox, enqueue formatted string to array: 
-
-
-
 Determining the current greenlet and thread
-===========================================
+-------------------------------------------
 1. First method tried: using API calls (PyGreenlet_Current(), etc.). Problem is that they require GIL and that makes
    them slow.
 

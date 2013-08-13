@@ -13,7 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 
 print sys.path
 
-from infi.tracing import set_profile, unset_profile, NO_TRACE, NO_TRACE_NESTED, TRACE_FUNC_NAME
+from infi.tracing import set_tracing, unset_tracing, NO_TRACE, NO_TRACE_NESTED, TRACE_FUNC_NAME
 
 
 def bar():
@@ -46,19 +46,19 @@ def foo_with_exception():
     except:
         pass
 
-def trace_filter(code):
-    print("trace_filter {}".format(code.co_name))
-    if code.co_name  in ["foo", "bar", "foo_with_exception", "bar_with_exception", "kar_exception"]:
+def trace_filter(frame):
+    print("trace_filter {}".format(frame.f_code.co_name))
+    if frame.f_code.co_name  in ["foo", "bar", "foo_with_exception", "bar_with_exception", "kar_exception"]:
         return TRACE_FUNC_NAME
-    if code.co_name == "notrace_foo":
+    if frame.f_code.co_name == "notrace_foo":
         return NO_TRACE
-    if code.co_name == "nested_notrace_foo":
+    if frame.f_code.co_name == "nested_notrace_foo":
         return NO_TRACE_NESTED
     return TRACE_FUNC_NAME
 
 
 print("setting profile")
-set_profile(trace_filter)
+set_tracing(trace_filter)
 
 print("calling foo")
 foo()
@@ -79,4 +79,4 @@ print("all done, unsetting profile")
 
 from infi.tracing.ctracing import call_log
 print("call_log size: {}".format(len(call_log)))
-unset_profile()
+unset_tracing()
