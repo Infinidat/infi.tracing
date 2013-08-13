@@ -1,3 +1,20 @@
+cdef extern from "lru.hpp" namespace "plb":
+    cdef cppclass LRUCacheH4ConstIterator[K, V]:
+        const K& key() nogil
+        const V& value() nogil
+        bool operator==(const LRUCacheH4ConstIterator[K, V]& other) nogil
+        bool operator!=(const LRUCacheH4ConstIterator[K, V]& other) nogil
+
+    cdef cppclass LRUCacheH4[K, V]:
+        LRUCacheH4(int)
+        LRUCacheH4ConstIterator[K, V] find(const K& key) nogil
+        LRUCacheH4ConstIterator[K, V] end() nogil
+        void insert(const K& key, const V& value) nogil
+
+
+ctypedef LRUCacheH4[long,int] CodeLRUCache
+ctypedef LRUCacheH4ConstIterator[long,int] CodeLRUCacheConstIterator
+
 cdef CodeLRUCache* trace_level_func_cache = NULL
 
 cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrameObject* frame) with gil:

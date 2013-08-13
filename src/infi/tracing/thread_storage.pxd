@@ -10,7 +10,7 @@ cdef extern from "thread_storage.h":
         bool enabled
 
     cdef cppclass ThreadStorage:
-        bool enabled
+        int enabled
         long last_frame
         long last_gid
         GreenletStorage* find_gstorage(long gid) nogil

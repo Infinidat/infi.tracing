@@ -105,7 +105,7 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         # Also, PyTrace_EXCEPTION cannot happen with a profile function.
         return 0
 
-    if not tstore.enabled:
+    if tstore.enabled <= 0:
         return 0
 
     if no_trace_from_depth != NO_TRACE_FROM_DEPTH_DISABLED:
@@ -163,9 +163,10 @@ def ctracing_set_func_cache_size(size):
 
 def suspend():
     cdef ThreadStorage* tstore = get_thread_storage()
-    tstore.enabled = False
+    dec(tstore.enabled)
 
 
 def resume():
     cdef ThreadStorage* tstore = get_thread_storage()
-    tstore.enabled = True
+    if tstore.enabled <= 0:
+        inc(tstore.enabled)

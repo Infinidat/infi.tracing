@@ -31,9 +31,9 @@ public:
 
 class ThreadStorage {
 public:
-	ThreadStorage() : enabled(true), last_frame(0), last_gid(-1), gid_map() {}
+	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), gid_map() {}
 
-	bool enabled;
+	int enabled;
 	long last_frame;
 	long last_gid;
 
