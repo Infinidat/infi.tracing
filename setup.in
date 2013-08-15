@@ -47,7 +47,7 @@ def build_ext_modules():
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
                libraries=["stdc++"],
-               extra_compile_args=["-std=c++11"],
+               extra_compile_args=["-std=c++11", "-Wno-format-security"],
                extra_link_args=["-std=c++11"])]
 
 def setup():
