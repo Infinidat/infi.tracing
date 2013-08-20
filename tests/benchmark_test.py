@@ -21,15 +21,14 @@ CUT_OFF_TIME = 5.0
 def print_samples(label, samples, baseline_avg=None):
     avg = sum(samples) / len(samples)
     min_sample, max_sample = min(samples), max(samples)
-    buf = ["{:20}:".format(label),
+    buf = ["{:8}:".format(label),
            ", ".join("{:10.2f}".format(s) for s in samples),
-           "avg. {:10.2f}".format(avg),
-           "min d {:5.2f}%".format(100.0 * (min_sample - avg) / avg),
-           "max d {:5.2f}%".format(100.0 * (max_sample - avg) / avg)]
+           "min/avg d {:5.2f}%".format(100.0 * (min_sample - avg) / avg),
+           "max/avg d {:5.2f}%".format(100.0 * (max_sample - avg) / avg)]
     if baseline_avg is not None:
-        buf.append("({:.2f} times slower from baseline)".format((baseline_avg - avg) / avg))
+        buf.append("({:.2f} times slower than baseline)".format((baseline_avg - avg) / avg))
     
-    print(" ".join(buf))
+    print("  {}".format(" ".join(buf)))
 
 
 def benchmark(samples, func):
@@ -68,7 +67,7 @@ p_samples = []
 for si in xrange(SAMPLES):
     benchmark(p_samples, foo)
 
-print_samples("no profiling", np_samples)
-print_samples("profiling", p_samples, sum(np_samples) / len(np_samples))
+print_samples("baseline", np_samples)
+print_samples("test", p_samples, sum(np_samples) / len(np_samples))
 
 unset_tracing()
