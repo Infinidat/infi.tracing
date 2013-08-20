@@ -161,6 +161,19 @@ def ctracing_set_func_cache_size(size):
         raise Exception("failed to create trace level func cache (size: {})".format(size))
 
 
+def ctracing_set_output_to_syslog(ident, facility):
+    global trace_output
+    cdef:
+        const char* ident_str = ident
+        int facility_int = facility
+    openlog(ident_str, LOG_NDELAY, facility_int)
+    trace_output = TRACE_SYSLOG
+
+def ctracing_set_output_to_file(path):
+    # fopen("/tmp/trace.log", "wb")
+    pass
+
+
 def suspend():
     cdef ThreadStorage* tstore = get_thread_storage()
     dec(tstore.enabled)

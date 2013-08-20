@@ -13,7 +13,8 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from infi.tracing import set_tracing, unset_tracing, TRACE_FUNC_PRIMITIVES
+from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog, tracing_output_to_file,
+                          TRACE_FUNC_PRIMITIVES, LOG_LOCAL0)
 
 SAMPLES = 5
 CUT_OFF_TIME = 5.0
@@ -61,6 +62,7 @@ def trace_filter(frame):
     return TRACE_FUNC_PRIMITIVES
 
 
+tracing_output_to_syslog("benchmark", LOG_LOCAL0)
 set_tracing(trace_filter)
 
 p_samples = []

@@ -7,11 +7,8 @@ cdef char* UNKNOWN_MODULE = "<unknown>"
 cdef enum:
     TRACE_BUFFER_MAX_SIZE = 1024
 
-from libc.stdio cimport FILE, fopen, fprintf, fclose, fwrite, snprintf
-
-cdef FILE* trace_file = fopen("/tmp/trace.log", "wb")
-
 include "serialize.pyx"
+include "output.pyx"
 
 cdef inline int serialize_prefix(char direction, long gid, long depth, PyFrameObject* frame, char* output, 
     int maxlen) with gil:
@@ -66,8 +63,7 @@ cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, 
                                             TRACE_BUFFER_MAX_SIZE - trace_buffer_i)
                 inc(locals_i)
 
-    fwrite(trace_buffer, trace_buffer_i, 1, trace_file)
-    fwrite("\n", 1, 1, trace_file)
+    emit_output(trace_buffer)
 
 
 cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
@@ -88,5 +84,4 @@ cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame
                 # FIXME: extract exception info here and serialize it
                 trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, 
                                            "EXCEPTION")
-    fwrite(trace_buffer, trace_buffer_i, 1, trace_file)
-    fwrite("\n", 1, 1, trace_file)
+    emit_output(trace_buffer)
