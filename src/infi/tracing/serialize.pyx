@@ -24,7 +24,6 @@ cdef inline int min(int a, int b) nogil:
 
 
 cdef inline int int_repr(PyObject* ptr, char* output, int maxlen):
-    # FIXME: if truncated we should warn about this
     cdef int n
     n = snprintf(output, maxlen, "%ld", PyInt_AS_LONG(ptr))
     if n == maxlen:

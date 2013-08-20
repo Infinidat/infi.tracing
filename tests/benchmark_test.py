@@ -16,18 +16,30 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 print sys.path
 
-from infi.tracing import set_tracing, unset_tracing, NO_TRACE, TRACE_FUNC_NAME
+from infi.tracing import set_tracing, unset_tracing, TRACE_FUNC_PRIMITIVES
+
+
+SAMPLES = 5
+ITERS = 1000000
+
+def print_samples(label, samples, baseline_avg=None):
+    avg = sum(samples) / len(samples)
+    buf = ["{:20}: {}: avg. {:.3f}".format(label, ",".join("{:.3f}".format(s) for s in samples), avg)]
+    if baseline_avg is not None:
+        buf.append("({:.2f} times from baseline)".format(avg / baseline_avg))
+
+    print(" ".join(buf))
 
 
 @contextmanager
-def benchmark(label):
+def benchmark(samples):
     try:
         start = time()
         yield
     finally:
         end = time()
-        print("{} time: {:.4f}".format(label, end - start))
-
+        samples.append(end - start)
+        print("sample result: {:.3f}".format(end - start))
 
 def bar():
     pass
@@ -37,20 +49,28 @@ def foo():
     bar()
 
 
-with benchmark("no profile set"):
-    for i in xrange(1000000):
-        foo()
+np_samples = []
+for si in xrange(SAMPLES):
+    with benchmark(np_samples) as sample:
+        for i in xrange(ITERS):
+            foo()
+
 
 
 def trace_filter(frame):
     print("trace_filter {}".format(frame.f_code.co_name))
-    return NO_TRACE
+    return TRACE_FUNC_PRIMITIVES
 
 
 set_tracing(trace_filter)
 
-with benchmark("infi.tracing.set_tracing set"):
-    for i in xrange(1000000):
-        foo()
+p_samples = []
+for si in xrange(SAMPLES):
+    with benchmark(p_samples):
+        for i in xrange(ITERS):
+            foo()
+
+print_samples("no profiling", np_samples)
+print_samples("profiling", p_samples, sum(np_samples) / len(np_samples))
 
 unset_tracing()

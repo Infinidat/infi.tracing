@@ -21,6 +21,9 @@ class Foo(object):
     def foo(self):
         pass
 
+    def this_is_a_very_long_method_name_so_it_should_get_truncated_somehow(self):
+        pass
+
 
 def bar(n):
     pass
@@ -137,6 +140,8 @@ func_with_arg(Foo.foo)
 func_with_arg(Foo)
 
 func_with_arg(foo)
+
+func_with_arg((f.this_is_a_very_long_method_name_so_it_should_get_truncated_somehow, func_with_vkwargs))
 
 print("all done, unsetting profile")
 
