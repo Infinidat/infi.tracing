@@ -90,7 +90,6 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         long gid, depth, no_trace_from_depth
         ThreadStorage* tstore
         GreenletStorage* gstore = NULL
-    return 0
 
     tstore = get_thread_storage()
 

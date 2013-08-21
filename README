@@ -23,18 +23,16 @@ All benchmarks were done on the following setup:
 - 6GB RAM
 - Transcend 128GB SSD
 
-Running benchmark_test.py
--------------------------
-latest test: 1M iterations
+Running benchmark_test.py (5 seconds per iter, 5 iters)
+-------------------------------------------------------
 
+commit 10df3efec12393cb7621aa99b24b82eca0840f3f
+  baseline: 1825720.00, 1835449.80, 1842398.00, 1830729.20, 1833467.40 min/avg d -0.43% max/avg d  0.48%
+  test    : 1633125.40, 1635413.40, 1628644.00, 1606401.20, 1633005.20 min/avg d -1.29% max/avg d  0.50% (1.13 times slower than baseline)
 
-commit 0e1e93404b5fa34399614f491ce79914059c02d2 (fwrite to /tmp/trace.log)
-  baseline: 1823755.80, 1839950.40, 1832140.80, 1835169.40, 1840299.00 min/avg d -0.57% max/avg d  0.33%
-  test    :  175105.37,  175522.80,  175158.93,  176006.67,  175043.60 min/avg d -0.18% max/avg d  0.36% (9.46 times slower than baseline)
+  - return 0 immediately when entering our greenlet_trace_func function.
+  - 13% slower than no trace at all.
 
-commit 38b46426e961ea6d38727c6ed260f579957aefaa (output to syslog)
-  baseline: 1828591.80, 1830719.40, 1840897.00, 1830412.60, 1828667.40 min/avg d -0.18% max/avg d  0.49%
-  test    :   34846.98,   36111.71,   31175.38,   34763.70,   35663.20 min/avg d -9.67% max/avg d  4.63% (52.08 times slower than baseline)
 
 
 Running izbox-mock system till we get to online tests
