@@ -27,7 +27,7 @@ def print_samples(label, samples, baseline_avg=None):
            "min/avg d {:5.2f}%".format(100.0 * (min_sample - avg) / avg),
            "max/avg d {:5.2f}%".format(100.0 * (max_sample - avg) / avg)]
     if baseline_avg is not None:
-        buf.append("({:.2f} times slower than baseline)".format((baseline_avg - avg) / avg))
+        buf.append("({:.2f} times slower than baseline)".format(baseline_avg / avg))
     
     print("  {}".format(" ".join(buf)))
 
