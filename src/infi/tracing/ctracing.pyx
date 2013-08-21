@@ -93,8 +93,6 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
 
     tstore = get_thread_storage()
 
-    return 0
-
     if what == PyTrace_CALL:
         gstore = get_gstore_on_call(tstore, frame)
         inc(gstore.depth)
@@ -117,6 +115,8 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         # PyTrace_C_CALL, PyTrace_C_EXCEPTION, PyTrace_C_RETURN
         # Also, PyTrace_EXCEPTION cannot happen with a profile function.
         return 0
+
+    return 0
 
     if tstore.enabled <= 0:
         return 0
