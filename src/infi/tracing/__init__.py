@@ -5,6 +5,7 @@ from infi.pyutils.decorators import wraps
 
 __all__ = ['set_tracing', 'unset_tracing', 'set_func_cache_size', 'suspend_tracing', 'resume_tracing',
            'no_tracing_context_recursive', 'no_tracing_recursive',
+           'tracing_output_to_syslog', 'tracing_output_to_file',
            'NO_TRACE', 'NO_TRACE_NESTED', 'TRACE_FUNC_NAME', 'TRACE_FUNC_PRIMITIVES', 'TRACE_FUNC_REPR',
            # Syslog stuff:
            'LOG_EMERG', 'LOG_ALERT', 'LOG_CRIT', 'LOG_ERR', 'LOG_WARNING', 'LOG_NOTICE', 'LOG_INFO', 'LOG_DEBUG',
@@ -35,16 +36,20 @@ def tracing_output_to_syslog(ident, facility):
 
 
 def tracing_output_to_file(path):
-    raise NotImplementedError()
+    from infi.tracing.ctracing import ctracing_set_output_to_file
+    ctracing_set_output_to_file(path)
 
 
 def set_tracing(filter_func=_filter_all):
-    from infi.tracing.ctracing import ctracing_set_profile
+    from infi.tracing.ctracing import ctracing_set_profile, ctracing_start_trace_dump
+    ctracing_start_trace_dump()
     ctracing_set_profile(filter_func)
 
 
 def unset_tracing():
+    from infi.tracing.ctracing import ctracing_stop_trace_dump
     sys.setprofile(None)
+    ctracing_stop_trace_dump()
 
 
 def set_func_cache_size(size):

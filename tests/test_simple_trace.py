@@ -11,7 +11,8 @@ ver = "{}.{}".format(python_major_ver, python_minor_ver)
 sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
 
-from infi.tracing import set_tracing, unset_tracing, NO_TRACE, NO_TRACE_NESTED, TRACE_FUNC_NAME, TRACE_FUNC_PRIMITIVES
+from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_file, NO_TRACE, NO_TRACE_NESTED,
+                          TRACE_FUNC_NAME, TRACE_FUNC_PRIMITIVES)
 
 
 class Foo(object):
@@ -82,6 +83,7 @@ def trace_filter(frame):
 
 
 print("setting profile")
+tracing_output_to_file("/tmp/trace.log")
 set_tracing(trace_filter)
 
 print("calling foo")
@@ -100,6 +102,12 @@ print("calling foo_with_exception")
 foo_with_exception()
 
 func_with_arg(1)
+
+func_with_arg(None)
+
+func_with_arg(True)
+
+func_with_arg(False)
 
 func_with_arg("this is a string")
 

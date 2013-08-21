@@ -11,9 +11,20 @@ cdef enum:
     TRACE_FUNC_REPR       = 4
 
 from thread_storage cimport ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, get_thread_storage
+from trace_dump cimport TraceDump, FileTraceDump, SyslogTraceDump
+from libc.stdio cimport FILE, fopen, fprintf, fclose, fwrite, stdout
 
 include "log.pyx"
 include "trace_level_func_cache.pyx"
+
+cdef enum:
+    TRACE_NONE   = 0
+    TRACE_FILE   = 1
+    TRACE_SYSLOG = 2
+
+cdef int trace_output = TRACE_NONE
+
+cdef FILE* trace_file_handle = NULL
 
 
 cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
@@ -169,9 +180,43 @@ def ctracing_set_output_to_syslog(ident, facility):
     openlog(ident_str, LOG_NDELAY, facility_int)
     trace_output = TRACE_SYSLOG
 
+
 def ctracing_set_output_to_file(path):
-    # fopen("/tmp/trace.log", "wb")
-    pass
+    global trace_file_handle, trace_output
+    trace_file_handle = fopen(path, "wb")
+    if trace_file_handle == NULL:
+        raise ValueError("failed to open trace file {} for writing".format(path))
+    trace_output = TRACE_FILE
+
+
+def ctracing_set_output_to_stdout():
+    global trace_file_handle, trace_output
+    trace_file_handle == stdout
+    trace_output = TRACE_FILE
+
+
+cdef TraceDump* trace_dump = NULL
+def ctracing_start_trace_dump():
+    global trace_dump, trace_output
+    if trace_dump != NULL:
+        raise ValueError("trace dump already started")
+
+    if trace_output == TRACE_SYSLOG:
+        trace_dump = new SyslogTraceDump()
+    elif trace_output == TRACE_FILE:
+        trace_dump = new FileTraceDump(trace_file_handle)
+    elif trace_output == TRACE_NONE:
+        pass
+
+    if trace_dump != NULL:
+        trace_dump.start()
+    
+def ctracing_stop_trace_dump():
+    global trace_dump
+    if trace_dump != NULL:
+        trace_dump.stop()
+        del trace_dump
+        trace_dump = NULL
 
 
 def suspend():

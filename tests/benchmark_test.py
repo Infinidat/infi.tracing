@@ -63,6 +63,7 @@ def trace_filter(frame):
 
 
 tracing_output_to_syslog("benchmark", LOG_LOCAL0)
+# tracing_output_to_file("/tmp/trace.log")
 set_tracing(trace_filter)
 
 p_samples = []

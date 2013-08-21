@@ -1,17 +1,15 @@
 from defs cimport *
-from libc.stdio cimport snprintf
+from trace_message cimport TraceMessage, TraceMessagePtr, move_trace_message_ptr
 
-from inspect import getargvalues
+include "serialize.pyx"
 
 cdef char* UNKNOWN_MODULE = "<unknown>"
 cdef enum:
     TRACE_BUFFER_MAX_SIZE = 1024
 
-include "serialize.pyx"
-include "output.pyx"
 
-cdef inline int serialize_prefix(char direction, long gid, long depth, PyFrameObject* frame, char* output, 
-    int maxlen) with gil:
+cdef inline bool serialize_prefix(char direction, long gid, long depth, PyFrameObject* frame, 
+                                  TraceMessage* message) with gil:
     cdef:
         char* file_name
         char* func_name
@@ -27,61 +25,56 @@ cdef inline int serialize_prefix(char direction, long gid, long depth, PyFrameOb
     else:
         module_name = UNKNOWN_MODULE
 
-    return snprintf(output, maxlen, "%c,%d:%d,%s:%d,%s,%s", direction, gid, depth, file_name, line_no, module_name, 
-                    func_name)
+    return message.printf("%c,%d:%d,%s:%d,%s,%s", direction, gid, depth, file_name, line_no, module_name, func_name)
+
 
 cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
-    cdef:
-        int locals_i = 0
-        int line_no
-        char trace_buffer[TRACE_BUFFER_MAX_SIZE + 1]
-        int trace_buffer_len = 0
-        int trace_buffer_i = 0
-        int bytes_written = 0
+    global trace_dump
+    # cdef:
+    #     int locals_i = 0
+    #     TraceMessagePtr trace_message = TraceMessagePtr(new TraceMessage())
 
-    trace_buffer[TRACE_BUFFER_MAX_SIZE] = '\0'
-    trace_buffer_i = serialize_prefix('>', gid, depth, frame, trace_buffer, TRACE_BUFFER_MAX_SIZE)
-    if trace_level > TRACE_FUNC_NAME:
-        with gil:
-            for locals_i in range(frame.f_code.co_argcount):
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, ",")
-                trace_buffer_i += fast_repr(frame.f_localsplus[locals_i], &trace_buffer[trace_buffer_i], 
-                                            TRACE_BUFFER_MAX_SIZE - trace_buffer_i)
+    # if not serialize_prefix('>', gid, depth, frame, trace_message.get()):
+    #     # FIXME - not enough room to write this down...
+    #     return
 
-            locals_i = frame.f_code.co_argcount
-            if frame.f_code.co_flags & CO_VARARGS:
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, ",")
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, "vargs=")
-                trace_buffer_i += fast_repr(frame.f_localsplus[locals_i], &trace_buffer[trace_buffer_i], 
-                                            TRACE_BUFFER_MAX_SIZE - trace_buffer_i)
-                inc(locals_i)
+    # if trace_level > TRACE_FUNC_NAME:
+    #     with gil:
+    #         for locals_i in range(frame.f_code.co_argcount):
+    #             trace_message.get().write(",")
+    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
 
-            if frame.f_code.co_flags & CO_VARKEYWORDS:
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, ",")
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, "kwargs=")
-                trace_buffer_i += fast_repr(frame.f_localsplus[locals_i], &trace_buffer[trace_buffer_i], 
-                                            TRACE_BUFFER_MAX_SIZE - trace_buffer_i)
-                inc(locals_i)
+    #         locals_i = frame.f_code.co_argcount
+    #         if frame.f_code.co_flags & CO_VARARGS:
+    #             trace_message.get().write(",vargs=")
+    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
+    #             inc(locals_i)
 
-    emit_output(trace_buffer)
+    #         if frame.f_code.co_flags & CO_VARKEYWORDS:
+    #             trace_message.get().write(",kwargs=")
+    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
+    #             inc(locals_i)
+
+    # if trace_dump != NULL:
+    #     trace_dump.push(move_trace_message_ptr(trace_message))
 
 
 cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
-    cdef:
-        char trace_buffer[TRACE_BUFFER_MAX_SIZE + 1]
-        int trace_buffer_len = 0
-        int trace_buffer_i = 0
-        int bytes_written = 0
+    global trace_dump
+    # cdef TraceMessagePtr trace_message = TraceMessagePtr(new TraceMessage())
 
-    trace_buffer[TRACE_BUFFER_MAX_SIZE] = '\0'
-    trace_buffer_i = serialize_prefix('<', gid, depth, frame, trace_buffer, TRACE_BUFFER_MAX_SIZE)
-    if trace_level > TRACE_FUNC_NAME:
-        trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, ",")
-        with gil:
-            if arg != NULL:
-                trace_buffer_i += fast_repr(arg, &trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i)
-            else:
-                # FIXME: extract exception info here and serialize it
-                trace_buffer_i += snprintf(&trace_buffer[trace_buffer_i], TRACE_BUFFER_MAX_SIZE - trace_buffer_i, 
-                                           "EXCEPTION")
-    emit_output(trace_buffer)
+    # if not serialize_prefix('<', gid, depth, frame, trace_message.get()):
+    #     # FIXME - not enough room to write this down...
+    #     return
+
+    # if trace_level > TRACE_FUNC_NAME:
+    #     trace_message.get().write(",")
+    #     with gil:
+    #         if arg != NULL:
+    #             fast_repr(arg, trace_message.get())
+    #         else:
+    #             # FIXME: extract exception info here and serialize it
+    #             trace_message.get().write("EXCEPTION")
+    
+    # if trace_dump != NULL:
+    #     trace_dump.push(move_trace_message_ptr(trace_message))
