@@ -93,6 +93,8 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
 
     tstore = get_thread_storage()
 
+    return 0
+
     if what == PyTrace_CALL:
         gstore = get_gstore_on_call(tstore, frame)
         inc(gstore.depth)
