@@ -16,6 +16,7 @@ ctypedef LRUCacheH4[long,int] CodeLRUCache
 ctypedef LRUCacheH4ConstIterator[long,int] CodeLRUCacheConstIterator
 
 cdef CodeLRUCache* trace_level_func_cache = NULL
+cdef unsigned long func_cache_hit, func_cache_miss
 
 cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrameObject* frame) with gil:
     global trace_level_func_cache
@@ -23,6 +24,7 @@ cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrame
 
     trace_level_result = (<object>filter_func)(<object>frame)
     if trace_level_result is None:
+        # FIXME: this is an error
         print("trace_level_result is None w/ frame: {} (filter: {})".format(<object>frame.f_code, <object>filter_func))
     trace_level = int(trace_level_result)
     trace_level_func_cache.insert(<long>frame.f_code, trace_level_result)
@@ -37,6 +39,8 @@ cdef inline int find_trace_level_or_call_filter(PyFrameObject* frame, PyObject* 
     code_found = trace_level_func_cache.find(<long>frame.f_code)
     if code_found != trace_level_func_cache.end():
         trace_level = code_found.value()
+        inc(func_cache_hit)
     else:
         trace_level = call_filter_and_store_trace_level(filter_func, frame)
+        inc(func_cache_miss)
     return trace_level

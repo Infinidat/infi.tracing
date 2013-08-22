@@ -15,10 +15,19 @@ T clip(const T& n, const T& lower, const T& upper) {
 class TraceMessage {
 public:
 	TraceMessage() {
+		recycle();
+	}
+
+	void recycle() {
 		write_index = 0;
 		limit_index = TRACE_MESSAGE_MAX_SIZE;
 		buffer[0] = buffer[TRACE_MESSAGE_MAX_SIZE] = '\0';
+		ready = false;
 	}
+
+	bool is_ready() const { return ready; }
+
+	void set_ready() { ready = true; }
 
 	const char* get_buffer() const { return buffer; }
 	
@@ -91,6 +100,7 @@ private:
 	char buffer[TRACE_MESSAGE_MAX_SIZE + 1];
 	int write_index;
 	int limit_index;
+	bool ready;
 };
 
 typedef std::unique_ptr<TraceMessage> TraceMessagePtr;

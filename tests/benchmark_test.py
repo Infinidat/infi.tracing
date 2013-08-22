@@ -16,8 +16,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog, tracing_output_to_file,
                           TRACE_FUNC_PRIMITIVES, LOG_LOCAL0)
 
-SAMPLES = 5
-CUT_OFF_TIME = 5.0
+SAMPLES = 1
+CUT_OFF_TIME = 1.0
 
 def print_samples(label, samples, baseline_avg=None):
     avg = sum(samples) / len(samples)
@@ -70,7 +70,10 @@ p_samples = []
 for si in xrange(SAMPLES):
     benchmark(p_samples, foo)
 
+unset_tracing()
+
 print_samples("baseline", np_samples)
 print_samples("test", p_samples, sum(np_samples) / len(np_samples))
 
-unset_tracing()
+from infi.tracing.ctracing import ctracing_print_stats
+ctracing_print_stats()

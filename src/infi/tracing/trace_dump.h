@@ -2,33 +2,18 @@
 #define __trace_dump_h__
 
 #include <thread>
-#include <deque>
-#include <mutex>
-#include <condition_variable>
 
 #include "trace_message.h"
+#include "trace_message_ring_buffer.h"
 
 class TraceDump {
 public:
-	TraceDump() : shutdown(false) {}
+	TraceDump(TraceMessageRingBuffer& _ring_buffer) : shutdown(false), ring_buffer(_ring_buffer) {}
 	virtual ~TraceDump();
 
 	void start();
 
 	void stop();
-
-	void push(TraceMessagePtr&& ptr) {
-		{
-			std::lock_guard<std::mutex> guard(mutex);
-			message_queue.push_back(std::move(ptr));
-		}
-		cond.notify_one();
-	}
-
-	void begin_shutdown() {
-		shutdown = true;
-		cond.notify_one();
-	}
 
 protected:
 	void thread_func();
@@ -36,18 +21,14 @@ protected:
 	virtual void process(TraceMessage* message) = 0;
 
 private:
-	typedef std::deque<TraceMessagePtr> TraceMessageQueue;
-
 	bool shutdown;
-	std::mutex mutex;
-	std::condition_variable cond;
-	TraceMessageQueue message_queue;
+	TraceMessageRingBuffer& ring_buffer;
 	std::unique_ptr<std::thread> thread;
 };
 
 class FileTraceDump: public TraceDump {
 public:
-	FileTraceDump(FILE* f) : handle(f) {}
+	FileTraceDump(TraceMessageRingBuffer& _ring_buffer, FILE* f) : TraceDump(_ring_buffer), handle(f) {}
 
 protected:
 	void process(TraceMessage* message);
@@ -57,6 +38,9 @@ private:
 };
 
 class SyslogTraceDump: public TraceDump {
+public:
+	SyslogTraceDump(TraceMessageRingBuffer& _ring_buffer) : TraceDump(_ring_buffer) {}
+
 protected:
 	void process(TraceMessage* message);
 };

@@ -1,5 +1,10 @@
+from libc.stdio cimport FILE, fopen, fprintf, fclose, fwrite, stdout
 from cython.operator cimport dereference as deref, preincrement as inc, predecrement as dec
+
 from defs cimport *
+from thread_storage cimport ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, get_thread_storage
+from trace_dump cimport TraceDump, FileTraceDump, SyslogTraceDump
+from trace_message_ring_buffer cimport TraceMessageRingBuffer
 
 DEFAULT_FUNC_CACHE_SIZE = 10000
 
@@ -10,9 +15,6 @@ cdef enum:
     TRACE_FUNC_PRIMITIVES = 3
     TRACE_FUNC_REPR       = 4
 
-from thread_storage cimport ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, get_thread_storage
-from trace_dump cimport TraceDump, FileTraceDump, SyslogTraceDump
-from libc.stdio cimport FILE, fopen, fprintf, fclose, fwrite, stdout
 
 include "log.pyx"
 include "trace_level_func_cache.pyx"
@@ -22,9 +24,14 @@ cdef enum:
     TRACE_FILE   = 1
     TRACE_SYSLOG = 2
 
+cdef unsigned long gid_hit = 0, gid_miss = 0
+cdef unsigned long gstore_hit = 0, gstore_miss = 0
+
 cdef int trace_output = TRACE_NONE
 
+cdef TraceMessageRingBuffer trace_message_ring_buffer
 cdef FILE* trace_file_handle = NULL
+cdef TraceDump* trace_dump = NULL
 
 
 cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
@@ -34,8 +41,14 @@ cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
         frame = frame.f_back
     return depth
 
+# Apparently when adding a GIL context to a function, Cython creates on the function's return that adds to the runtime 
+# cost even if the GIL context wasn't reached inside the function.
+# That's why we had to create this function, so GIL won't get called if this isn't called.
+cdef inline long get_current_gid() with gil:
+    return <long> PyGreenlet_GetCurrent()
 
 cdef inline GreenletStorage* get_gstore_on_call(ThreadStorage* tstore, PyFrameObject* frame) nogil:
+    global gid_hit, gid_miss, gstore_hit, gstore_miss
     cdef:
         long gid
         GreenletStorage* gstore
@@ -43,23 +56,31 @@ cdef inline GreenletStorage* get_gstore_on_call(ThreadStorage* tstore, PyFrameOb
     # Easy route: if we're in the same greenlet we may have the greenlet ID cached.
     if (tstore.last_frame != 0) and (tstore.last_frame == <long>frame.f_back):
         gid = tstore.last_gid
+        gstore = tstore.last_gstorage
+        inc(gid_hit)
     else:
-        with gil:
-            greenlet = PyGreenlet_GetCurrent()
-        gid = <long>greenlet
+        inc(gid_miss)
+        gid = get_current_gid()
+        gstore = NULL
 
     tstore.last_gid = gid
     tstore.last_frame = <long>frame
 
-    gstore = tstore.find_gstorage(gid)
     if gstore == NULL:
-        gstore = tstore.new_gstorage(gid)
-        gstore.depth = calc_new_greenlet_depth(frame)
+        inc(gstore_miss)
+        gstore = tstore.find_gstorage(gid)
+        if gstore == NULL:
+            gstore = tstore.new_gstorage(gid)
+            gstore.depth = calc_new_greenlet_depth(frame)
+        tstore.last_gstorage = gstore
+    else:
+        inc(gstore_hit)
 
     return gstore
 
 
 cdef inline GreenletStorage* get_gstore_on_return(ThreadStorage* tstore, PyFrameObject* frame) nogil:
+    global gid_hit, gid_miss, gstore_hit, gstore_miss
     cdef:
         long gid
         GreenletStorage* gstore
@@ -67,24 +88,30 @@ cdef inline GreenletStorage* get_gstore_on_return(ThreadStorage* tstore, PyFrame
     # Easy route: if we're in the same greenlet we may have the greenlet ID cached.
     if (tstore.last_frame != 0) and (tstore.last_frame == <long>frame):
         gid = tstore.last_gid
+        gstore = tstore.last_gstorage
+        inc(gid_hit)
     else:
-        with gil:
-            greenlet = PyGreenlet_GetCurrent()
-        gid = <long>greenlet
+        inc(gid_miss)
+        gid = get_current_gid()
+        gstore = NULL
 
     tstore.last_gid = gid
     tstore.last_frame = <long>frame.f_back
 
-    gstore = tstore.find_gstorage(gid)
     if gstore == NULL:
-        gstore = tstore.new_gstorage(gid)
-        gstore.depth = calc_new_greenlet_depth(frame)
+        inc(gstore_miss)
+        gstore = tstore.find_gstorage(gid)
+        if gstore == NULL:
+            gstore = tstore.new_gstorage(gid)
+            gstore.depth = calc_new_greenlet_depth(frame)
+        tstore.last_gstorage = gstore
+    else:
+        inc(gstore_hit)
 
     return gstore
 
 
 cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int what, PyObject* arg) nogil:
-    global cleanup_counter
     cdef:
         int trace_level = NO_TRACE
         long gid, depth, no_trace_from_depth
@@ -115,8 +142,6 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         # PyTrace_C_CALL, PyTrace_C_EXCEPTION, PyTrace_C_RETURN
         # Also, PyTrace_EXCEPTION cannot happen with a profile function.
         return 0
-
-    return 0
 
     if tstore.enabled <= 0:
         return 0
@@ -197,16 +222,15 @@ def ctracing_set_output_to_stdout():
     trace_output = TRACE_FILE
 
 
-cdef TraceDump* trace_dump = NULL
 def ctracing_start_trace_dump():
     global trace_dump, trace_output
     if trace_dump != NULL:
         raise ValueError("trace dump already started")
 
     if trace_output == TRACE_SYSLOG:
-        trace_dump = new SyslogTraceDump()
+        trace_dump = new SyslogTraceDump(trace_message_ring_buffer)
     elif trace_output == TRACE_FILE:
-        trace_dump = new FileTraceDump(trace_file_handle)
+        trace_dump = new FileTraceDump(trace_message_ring_buffer, trace_file_handle)
     elif trace_output == TRACE_NONE:
         pass
 
@@ -219,6 +243,14 @@ def ctracing_stop_trace_dump():
         trace_dump.stop()
         del trace_dump
         trace_dump = NULL
+
+
+def ctracing_print_stats():
+    global gid_hit, gid_miss, gstore_hit, gstore_miss, func_cache_hit, func_cache_miss
+    print("gid hits: {}, misses: {}".format(gid_hit, gid_miss))
+    print("gstore hits: {}, misses: {}".format(gstore_hit, gstore_miss))
+    print("func cache hits: {}, misses: {}".format(func_cache_hit, func_cache_miss))
+    print("overflow message counter: {}".format(trace_message_ring_buffer.get_overflow_counter()))
 
 
 def suspend():

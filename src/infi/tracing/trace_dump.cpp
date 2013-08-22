@@ -1,4 +1,3 @@
-#include <vector>
 #include <syslog.h>
 #include "trace_dump.h"
 
@@ -16,13 +15,16 @@ void TraceDump::start() {
 
 void TraceDump::stop() {
 	if (thread) {
-		begin_shutdown();
+		shutdown = true;
 		thread->join();
 		thread.reset(nullptr);
 	}
 
-	for (TraceMessageQueue::iterator i = message_queue.begin(); i != message_queue.end(); ++i) {
-		process(i->get());
+	TraceMessage* ptr = ring_buffer.reserve_pop(0);
+	while (ptr != 0) {
+		process(ptr);
+		ring_buffer.commit_pop();
+		ptr = ring_buffer.reserve_pop(0);
 	}
 }
 
@@ -32,30 +34,18 @@ void TraceDump::thread_func() {
 }
 
 bool TraceDump::wait_and_process() {
-	using MessageBuffer = std::vector<TraceMessagePtr>;
-	MessageBuffer incoming_messages;
-
 	if (shutdown) {
 		return false;
 	}
 
-	{
-		std::unique_lock<std::mutex> guard(mutex);
-		cond.wait(guard);
-		
-		if (shutdown) {
-			return false;
-		}
-
-		for (TraceMessageQueue::iterator i = message_queue.begin(); i != message_queue.end(); ++i) {
-			incoming_messages.push_back(std::move(*i));
-		}
-		message_queue.clear();
+	TraceMessage* message = ring_buffer.reserve_pop(250);
+	if (message == 0) {
+		return !shutdown;
 	}
 
-	for (MessageBuffer::iterator i = incoming_messages.begin(); i != incoming_messages.end(); ++i) {
-		process(i->get());
-	}
+	process(message);
+
+	ring_buffer.commit_pop();
 
 	return true;
 }

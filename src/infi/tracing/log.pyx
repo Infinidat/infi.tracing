@@ -4,8 +4,6 @@ from trace_message cimport TraceMessage, TraceMessagePtr, move_trace_message_ptr
 include "serialize.pyx"
 
 cdef char* UNKNOWN_MODULE = "<unknown>"
-cdef enum:
-    TRACE_BUFFER_MAX_SIZE = 1024
 
 
 cdef inline bool serialize_prefix(char direction, long gid, long depth, PyFrameObject* frame, 
@@ -29,52 +27,57 @@ cdef inline bool serialize_prefix(char direction, long gid, long depth, PyFrameO
 
 
 cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
-    global trace_dump
-    # cdef:
-    #     int locals_i = 0
-    #     TraceMessagePtr trace_message = TraceMessagePtr(new TraceMessage())
+    global trace_message_ring_buffer
+    cdef:
+        int locals_i = 0
+        TraceMessage* trace_message = trace_message_ring_buffer.reserve_push()
 
-    # if not serialize_prefix('>', gid, depth, frame, trace_message.get()):
-    #     # FIXME - not enough room to write this down...
-    #     return
+    if trace_message == NULL:
+        return
 
-    # if trace_level > TRACE_FUNC_NAME:
-    #     with gil:
-    #         for locals_i in range(frame.f_code.co_argcount):
-    #             trace_message.get().write(",")
-    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
+    try:
+        if not serialize_prefix('>', gid, depth, frame, trace_message):
+            # FIXME - not enough room to write this down...
+            return
 
-    #         locals_i = frame.f_code.co_argcount
-    #         if frame.f_code.co_flags & CO_VARARGS:
-    #             trace_message.get().write(",vargs=")
-    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
-    #             inc(locals_i)
+        if trace_level > TRACE_FUNC_NAME:
+            with gil:
+                for locals_i in range(frame.f_code.co_argcount):
+                    trace_message.write(",")
+                    fast_repr(frame.f_localsplus[locals_i], trace_message)
 
-    #         if frame.f_code.co_flags & CO_VARKEYWORDS:
-    #             trace_message.get().write(",kwargs=")
-    #             fast_repr(frame.f_localsplus[locals_i], trace_message.get())
-    #             inc(locals_i)
+                locals_i = frame.f_code.co_argcount
+                if frame.f_code.co_flags & CO_VARARGS:
+                    trace_message.write(",vargs=")
+                    fast_repr(frame.f_localsplus[locals_i], trace_message)
+                    inc(locals_i)
 
-    # if trace_dump != NULL:
-    #     trace_dump.push(move_trace_message_ptr(trace_message))
-
+                if frame.f_code.co_flags & CO_VARKEYWORDS:
+                    trace_message.write(",kwargs=")
+                    fast_repr(frame.f_localsplus[locals_i], trace_message)
+                    inc(locals_i)
+    finally:
+        trace_message_ring_buffer.commit_push(trace_message)
 
 cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
-    global trace_dump
-    # cdef TraceMessagePtr trace_message = TraceMessagePtr(new TraceMessage())
+    global trace_message_ring_buffer
+    cdef TraceMessage* trace_message = trace_message_ring_buffer.reserve_push()
 
-    # if not serialize_prefix('<', gid, depth, frame, trace_message.get()):
-    #     # FIXME - not enough room to write this down...
-    #     return
+    if trace_message == NULL:
+        return        
 
-    # if trace_level > TRACE_FUNC_NAME:
-    #     trace_message.get().write(",")
-    #     with gil:
-    #         if arg != NULL:
-    #             fast_repr(arg, trace_message.get())
-    #         else:
-    #             # FIXME: extract exception info here and serialize it
-    #             trace_message.get().write("EXCEPTION")
-    
-    # if trace_dump != NULL:
-    #     trace_dump.push(move_trace_message_ptr(trace_message))
+    try:
+        if not serialize_prefix('<', gid, depth, frame, trace_message):
+            # FIXME - not enough room to write this down...
+            return
+
+        if trace_level > TRACE_FUNC_NAME:
+            trace_message.write(",")
+            with gil:
+                if arg != NULL:
+                    fast_repr(arg, trace_message)
+                else:
+                    # FIXME: extract exception info here and serialize it
+                    trace_message.write("EXCEPTION")
+    finally:
+        trace_message_ring_buffer.commit_push(trace_message)

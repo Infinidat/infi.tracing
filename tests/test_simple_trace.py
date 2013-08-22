@@ -154,3 +154,6 @@ func_with_arg((f.this_is_a_very_long_method_name_so_it_should_get_truncated_some
 print("all done, unsetting profile")
 
 unset_tracing()
+
+from infi.tracing.ctracing import ctracing_print_stats
+ctracing_print_stats()

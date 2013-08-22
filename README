@@ -33,7 +33,27 @@ commit 10df3efec12393cb7621aa99b24b82eca0840f3f
   - return 0 immediately when entering our greenlet_trace_func function.
   - 13% slower than no trace at all.
 
+commit 193804b3304cbc3cde06090b61a19ffdd454258f
+  baseline: 1819488.00, 1833624.00, 1839292.20, 1833125.00, 1816866.80 min/avg d -0.64% max/avg d  0.59%
+  test    :  905229.00,  908321.20,  904548.20,  905278.20,  902933.00 min/avg d -0.26% max/avg d  0.34% (2.02 times slower than baseline)
 
+  - do greenlet and LRU filter lookup/call but nothing more.
+  - ~100% slower than baseline (+87% from null tracing).
+
+commit 9d27a55296f7efeb8b1641db9c8bd269609aad96
+  baseline: 1845614.20, 1838952.00, 1848122.80, 1825571.20, 1835942.80 min/avg d -0.72% max/avg d  0.50%
+  test    : 1503825.00, 1496979.60, 1505625.80, 1503810.80, 1504720.00 min/avg d -0.40% max/avg d  0.18% (1.22 times slower than baseline)
+
+ - just fetch thread-local storage and nothing more.
+ - ~20% slower than baseline (+7% from null tracing).
+
+commit ff8b7994c3cd773f3484fd99a406d74c07b80afb
+  baseline: 1814547.00, 1833100.00, 1859893.40, 1834792.80, 1793069.00 min/avg d -1.86% max/avg d  1.80%
+  test    :  987167.80,  991204.80,  993721.40,  998788.40, 1000324.20 min/avg d -0.71% max/avg d  0.61% (1.84 times slower than baseline)
+  
+  - fetch thread-local storage and gstore. No LRU search.
+  - ~80% slower than baseline (+67% from null tracing).
+ 
 
 Running izbox-mock system till we get to online tests
 -----------------------------------------------------

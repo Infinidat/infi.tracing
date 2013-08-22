@@ -13,6 +13,8 @@ cdef extern from "thread_storage.h":
         int enabled
         long last_frame
         long last_gid
+        GreenletStorage* last_gstorage
+
         GreenletStorage* find_gstorage(long gid) nogil
         GreenletStorage* new_gstorage(long gid) nogil
         GreenletStorage* del_gstorage(long gid) nogil

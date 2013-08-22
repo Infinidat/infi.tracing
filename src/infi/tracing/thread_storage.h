@@ -31,11 +31,12 @@ public:
 
 class ThreadStorage {
 public:
-	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), gid_map() {}
+	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), last_gstorage(0), gid_map() {}
 
 	int enabled;
 	long last_frame;
 	long last_gid;
+	GreenletStorage* last_gstorage;
 
 	GreenletStorage* find_gstorage(long gid) {
 		GIDMap::iterator i = gid_map.find(gid);
@@ -56,6 +57,7 @@ public:
 		if (last_gid == gid) {
 			last_gid = -1;
 			last_frame = 0;
+			last_gstorage = 0;
 		}
 	}
 
