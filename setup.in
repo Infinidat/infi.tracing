@@ -28,7 +28,7 @@ SETUP_INFO = dict(
     ],
 
     install_requires = ${project:install_requires},
-    setup_requires = ['Cython'],
+    setup_requires = ['setuptools_cython'],
     namespace_packages = ${project:namespace_packages},
 
     package_dir = {'': 'src'},
