@@ -73,7 +73,7 @@ def func_with_args_and_vargs_and_vwkargs(arg1, arg2, *args, **kwargs):
 
 def trace_filter(frame):
     print("trace_filter {}".format(frame.f_code.co_name))
-    if frame.f_code.co_name  in ["foo", "bar", "foo_with_exception", "bar_with_exception", "kar_exception"]:
+    if frame.f_code.co_name  in ["foo", "bar"]:
         return TRACE_FUNC_NAME
     if frame.f_code.co_name == "notrace_foo":
         return NO_TRACE

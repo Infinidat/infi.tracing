@@ -1,7 +1,7 @@
 from defs cimport *
-from trace_message cimport TraceMessage, TraceMessagePtr, move_trace_message_ptr
+from trace_message cimport TraceMessage
 
-include "serialize.pyx"
+include "ctracing_log_serialize.pyx"
 
 cdef char* UNKNOWN_MODULE = "<unknown>"
 
@@ -37,7 +37,7 @@ cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, 
 
     try:
         if not serialize_prefix('>', gid, depth, frame, trace_message):
-            # FIXME - not enough room to write this down...
+            # TODO: not enough room to write this down, maybe we should write TRUNCATED or something like that.
             return
 
         if trace_level > TRACE_FUNC_NAME:
@@ -62,13 +62,15 @@ cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, 
 cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
     global trace_message_ring_buffer
     cdef TraceMessage* trace_message = trace_message_ring_buffer.reserve_push()
+    cdef PyObject* exc_type = frame.f_tstate.exc_type
+    cdef PyObject* exc_value = frame.f_tstate.exc_value
 
     if trace_message == NULL:
         return        
 
     try:
         if not serialize_prefix('<', gid, depth, frame, trace_message):
-            # FIXME - not enough room to write this down...
+            # TODO: not enough room to write this down, maybe we should write TRUNCATED or something like that.
             return
 
         if trace_level > TRACE_FUNC_NAME:
@@ -77,7 +79,9 @@ cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame
                 if arg != NULL:
                     fast_repr(arg, trace_message)
                 else:
-                    # FIXME: extract exception info here and serialize it
-                    trace_message.write("EXCEPTION")
+                    # Since we're using setprofile, we can't know what exception was raised because Python's code
+                    # (specifically ceval.c:call_trace_protected) masks the exception before calling us - it calls
+                    # PyErr_Fetch that clears the exception from the frame.
+                    trace_message.write("exc")
     finally:
         trace_message_ring_buffer.commit_push(trace_message)

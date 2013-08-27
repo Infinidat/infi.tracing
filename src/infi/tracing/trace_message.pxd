@@ -13,14 +13,3 @@ cdef extern from "trace_message.h":
         int write_offset() nogil
         bool write(const char* str) nogil
         bool printf(const char* fmt, ...) nogil
-        bool nprintf(int max_size, const char* fmt, ...) nogil
-
-    cdef cppclass TraceMessagePtr:
-        TraceMessagePtr() nogil
-        TraceMessagePtr(TraceMessage*) nogil
-        TraceMessage& operator*() nogil
-        TraceMessage* get() nogil
-        TraceMessage* release() nogil
-
-cdef extern from "<utility>":
-    TraceMessagePtr&& move_trace_message_ptr "std::move"(TraceMessagePtr&& ptr) nogil

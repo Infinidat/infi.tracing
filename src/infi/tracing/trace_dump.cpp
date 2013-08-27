@@ -20,44 +20,39 @@ void TraceDump::stop() {
 		thread.reset(nullptr);
 	}
 
-	TraceMessage* ptr = ring_buffer.reserve_pop(0);
-	while (ptr != 0) {
-		process(ptr);
-		ring_buffer.commit_pop();
-		ptr = ring_buffer.reserve_pop(0);
-	}
-}
-
-void TraceDump::thread_func() {
-	while (wait_and_process())
+	while (pop_and_process())
 		;
 }
 
-bool TraceDump::wait_and_process() {
-	if (shutdown) {
-		return false;
+void TraceDump::thread_func() {
+	while (!shutdown) {
+		if (!pop_and_process()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
 	}
+}
 
-	TraceMessage* message = ring_buffer.reserve_pop(250);
-	if (message == 0) {
-		return !shutdown;
+bool TraceDump::pop_and_process() {
+	char buffer[TRACE_MESSAGE_MAX_SIZE + 1];
+	if (ring_buffer.pop(buffer, sizeof(buffer))) {
+		process(buffer);
+		return true;
 	}
-
-	process(message);
-
-	ring_buffer.commit_pop();
-
-	return true;
+	return false;
 }
 
-void TraceDump::process(TraceMessage* message) {
-	printf("%s\n", message->get_buffer());
+void TraceDump::process(const char* message) {
+	printf("%s\n", message);
 }
 
-void FileTraceDump::process(TraceMessage* message) {
-	fprintf(handle, "%s\n", message->get_buffer());
+void FileTraceDump::process(const char* message) {
+	fprintf(handle, "%s\n", message);
 }
 
-void SyslogTraceDump::process(TraceMessage* message) {
-	syslog(LOG_DEBUG, "%s", message->get_buffer());
+void FileTraceDump::flush() {
+	fflush(handle);
+}
+
+void SyslogTraceDump::process(const char* message) {
+	syslog(LOG_DEBUG, "%s", message);
 }

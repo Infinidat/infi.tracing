@@ -43,6 +43,9 @@ cdef extern from "Python.h":
 cdef extern from "pystate.h":
     ctypedef struct PyThreadState:
         long thread_id
+        PyObject* exc_type
+        PyObject* exc_value
+        PyObject* exc_traceback
 
 cdef extern from "frameobject.h":
     ctypedef struct PyCodeObject:
@@ -59,6 +62,9 @@ cdef extern from "frameobject.h":
         PyObject* f_globals
         PyThreadState* f_tstate
         PyObject* f_localsplus[1]
+        PyObject* f_exc_type
+        PyObject* f_exc_value
+        PyObject* f_exc_traceback
 
     int PyFrame_GetLineNumber(PyFrameObject*)
 
@@ -152,48 +158,3 @@ cdef extern from "greenlet.h":
 cdef extern from "stdio.h":
     void printf(const char* format, ...) nogil
     int snprintf(char* str, int size, const char* format, ...) nogil
-
-cdef extern from "syslog.h":
-    enum:
-        # openlog options
-        LOG_CONS
-        LOG_NDELAY
-        LOG_NOWAIT
-        LOG_ODELAY
-        LOG_PERROR
-        LOG_PID
-
-        # facility
-        LOG_AUTH
-        LOG_AUTHPRIV
-        LOG_CRON
-        LOG_DAEMON
-        LOG_FTP
-        LOG_KERN
-        LOG_LOCAL0
-        LOG_LOCAL1
-        LOG_LOCAL2
-        LOG_LOCAL3
-        LOG_LOCAL4
-        LOG_LOCAL5
-        LOG_LOCAL6
-        LOG_LOCAL7
-        LOG_LPR
-        LOG_MAIL
-        LOG_NEWS
-        LOG_SYSLOG
-        LOG_USER
-        LOG_UUCP
-
-        # level
-        LOG_EMERG
-        LOG_ALERT
-        LOG_CRIT
-        LOG_ERR
-        LOG_WARNING
-        LOG_NOTICE
-        LOG_INFO
-        LOG_DEBUG
-
-    void openlog(const char* ident, int option, int facility) nogil
-    void syslog(int priority, const char* format, ...) nogil

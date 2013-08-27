@@ -70,6 +70,7 @@ private:
 	ThreadStorage& operator=(const ThreadStorage&) = delete;
 };
 
+extern void init_thread_storage_once();
 extern ThreadStorage* get_thread_storage();
 
 #endif /* __thread_storage_h */

@@ -1,9 +1,8 @@
-from libc.stdio cimport FILE, fopen, fprintf, fclose, fwrite, stdout
 from cython.operator cimport dereference as deref, preincrement as inc, predecrement as dec
 
 from defs cimport *
-from thread_storage cimport ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, get_thread_storage
-from trace_dump cimport TraceDump, FileTraceDump, SyslogTraceDump
+from thread_storage cimport (ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, 
+                             init_thread_storage_once, get_thread_storage)
 from trace_message_ring_buffer cimport TraceMessageRingBuffer
 
 DEFAULT_FUNC_CACHE_SIZE = 10000
@@ -16,23 +15,14 @@ cdef enum:
     TRACE_FUNC_REPR       = 4
 
 
-include "log.pyx"
-include "trace_level_func_cache.pyx"
-
-cdef enum:
-    TRACE_NONE   = 0
-    TRACE_FILE   = 1
-    TRACE_SYSLOG = 2
-
 cdef unsigned long gid_hit = 0, gid_miss = 0
 cdef unsigned long gstore_hit = 0, gstore_miss = 0
 
-cdef int trace_output = TRACE_NONE
-
 cdef TraceMessageRingBuffer trace_message_ring_buffer
-cdef FILE* trace_file_handle = NULL
-cdef TraceDump* trace_dump = NULL
 
+include "trace_level_func_cache.pyx"
+include "ctracing_log.pyx"
+include "ctracing_trace_dump.pyx"
 
 cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
     cdef long depth = 0
@@ -172,6 +162,8 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
 def ctracing_set_profile(filter_func):
     global trace_level_func_cache, _PyGreenlet_API
 
+    init_thread_storage_once()
+
     cdef ThreadStorage* tstore
 
     if filter_func is None:
@@ -197,52 +189,6 @@ def ctracing_set_func_cache_size(size):
     trace_level_func_cache = new CodeLRUCache(size)
     if trace_level_func_cache == NULL:
         raise Exception("failed to create trace level func cache (size: {})".format(size))
-
-
-def ctracing_set_output_to_syslog(ident, facility):
-    global trace_output
-    cdef:
-        const char* ident_str = ident
-        int facility_int = facility
-    openlog(ident_str, LOG_NDELAY, facility_int)
-    trace_output = TRACE_SYSLOG
-
-
-def ctracing_set_output_to_file(path):
-    global trace_file_handle, trace_output
-    trace_file_handle = fopen(path, "wb")
-    if trace_file_handle == NULL:
-        raise ValueError("failed to open trace file {} for writing".format(path))
-    trace_output = TRACE_FILE
-
-
-def ctracing_set_output_to_stdout():
-    global trace_file_handle, trace_output
-    trace_file_handle == stdout
-    trace_output = TRACE_FILE
-
-
-def ctracing_start_trace_dump():
-    global trace_dump, trace_output
-    if trace_dump != NULL:
-        raise ValueError("trace dump already started")
-
-    if trace_output == TRACE_SYSLOG:
-        trace_dump = new SyslogTraceDump(trace_message_ring_buffer)
-    elif trace_output == TRACE_FILE:
-        trace_dump = new FileTraceDump(trace_message_ring_buffer, trace_file_handle)
-    elif trace_output == TRACE_NONE:
-        pass
-
-    if trace_dump != NULL:
-        trace_dump.start()
-    
-def ctracing_stop_trace_dump():
-    global trace_dump
-    if trace_dump != NULL:
-        trace_dump.stop()
-        del trace_dump
-        trace_dump = NULL
 
 
 def ctracing_print_stats():

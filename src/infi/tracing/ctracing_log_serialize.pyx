@@ -346,7 +346,9 @@ cdef inline bool obj_repr(PyObject* ptr, TraceMessage* output):
 
 
 cdef inline bool fast_repr(PyObject* ptr, TraceMessage* output) with gil:
-    if PyInt_CheckExact(ptr):
+    if ptr == NULL:
+        return output.write("<null>")
+    elif PyInt_CheckExact(ptr):
         return int_repr(ptr, output)
     elif PyLong_CheckExact(ptr):
         return long_repr(ptr, output)

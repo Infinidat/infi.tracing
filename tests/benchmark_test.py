@@ -14,10 +14,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog, tracing_output_to_file,
-                          TRACE_FUNC_PRIMITIVES, LOG_LOCAL0)
+                          TRACE_FUNC_PRIMITIVES)
+from syslog import LOG_LOCAL0
 
-SAMPLES = 1
-CUT_OFF_TIME = 1.0
+SAMPLES = 5
+CUT_OFF_TIME = 5.0
 
 def print_samples(label, samples, baseline_avg=None):
     avg = sum(samples) / len(samples)

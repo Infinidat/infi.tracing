@@ -17,8 +17,9 @@ public:
 
 protected:
 	void thread_func();
-	bool wait_and_process();
-	virtual void process(TraceMessage* message) = 0;
+	bool pop_and_process();
+	virtual void process(const char* message) = 0;
+	virtual void flush() {}
 
 private:
 	bool shutdown;
@@ -31,7 +32,8 @@ public:
 	FileTraceDump(TraceMessageRingBuffer& _ring_buffer, FILE* f) : TraceDump(_ring_buffer), handle(f) {}
 
 protected:
-	void process(TraceMessage* message);
+	void process(const char* message);
+	void flush();
 
 private:
 	FILE* handle;
@@ -42,7 +44,7 @@ public:
 	SyslogTraceDump(TraceMessageRingBuffer& _ring_buffer) : TraceDump(_ring_buffer) {}
 
 protected:
-	void process(TraceMessage* message);
+	void process(const char* message);
 };
 
 #endif
