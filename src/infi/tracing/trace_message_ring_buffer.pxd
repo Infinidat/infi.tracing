@@ -9,3 +9,5 @@ cdef extern from "trace_message_ring_buffer.h":
         void commit_push(TraceMessage* message) nogil
 
         unsigned long get_overflow_counter() nogil
+        unsigned long get_spinlock_consumer_wait_counter() nogil
+        unsigned long get_spinlock_producer_wait_counter() nogil

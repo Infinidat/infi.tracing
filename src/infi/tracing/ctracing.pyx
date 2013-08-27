@@ -197,6 +197,9 @@ def ctracing_print_stats():
     print("gstore hits: {}, misses: {}".format(gstore_hit, gstore_miss))
     print("func cache hits: {}, misses: {}".format(func_cache_hit, func_cache_miss))
     print("overflow message counter: {}".format(trace_message_ring_buffer.get_overflow_counter()))
+    print("spinlock counters: consumer {} / producer {}".format(
+        trace_message_ring_buffer.get_spinlock_consumer_wait_counter(),
+        trace_message_ring_buffer.get_spinlock_producer_wait_counter()))
 
 
 def suspend():

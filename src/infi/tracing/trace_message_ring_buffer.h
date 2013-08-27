@@ -73,7 +73,8 @@
 class TraceMessageRingBuffer {
 public:
     TraceMessageRingBuffer() : 
-        elements(), busy(), has_data(), head(0), tail(0), overflow_counter(0) {
+        elements(), busy(), has_data(), head(0), tail(0), overflow_counter(0), spinlock_consumer_wait_counter(0),
+        spinlock_producer_wait_counter(0) {
         for (int i = 0; i < RING_BUFFER_SIZE; ++i) {
             elements[i].recycle();
             busy[i].clear();
@@ -97,8 +98,7 @@ public:
 
         // We assume not all producers managed to write to the entire buffer and wrap around to this space otherwise
         // we're shooting ourselves in the leg (see caveat).
-        while (busy[reserved_space].test_and_set())
-            ;
+        lock_element(reserved_space, spinlock_consumer_wait_counter);
 
         // Check for overruns - if the slot has data it means the consumer didn't get to it which means an overrun
         // occurred.
@@ -117,8 +117,8 @@ public:
     // was no message to copy.
     bool pop(char* buffer, int maxsize) {
         int i = tail;
-        while (busy[i].test_and_set())
-            ;
+
+        lock_element(i, spinlock_producer_wait_counter);
 
         if (!has_data[i].test_and_set()) {
             has_data[i].clear();
@@ -137,11 +137,23 @@ public:
         return true;
     }
 
-    unsigned long get_overflow_counter() const {
-        return overflow_counter.load();
-    }
+    unsigned long get_overflow_counter() const { return overflow_counter.load(); }
+
+    unsigned long get_spinlock_consumer_wait_counter() const { return spinlock_consumer_wait_counter.load(); }
+
+    unsigned long get_spinlock_producer_wait_counter() const { return spinlock_producer_wait_counter.load(); }
 
 private:
+    inline void lock_element(int i, std::atomic_ulong& counter) {
+        bool collision = false;
+        while (busy[i].test_and_set()) {
+            collision = true;
+        }
+        if (collision) {
+            counter++;
+        }
+    }
+
     TraceMessage elements[RING_BUFFER_SIZE];
     std::atomic_flag busy[RING_BUFFER_SIZE];
     std::atomic_flag has_data[RING_BUFFER_SIZE];
@@ -150,6 +162,8 @@ private:
     int tail;   // no need to make this atomic since we've got only one consumer.
 
     std::atomic_ulong overflow_counter;
+    std::atomic_ulong spinlock_consumer_wait_counter;
+    std::atomic_ulong spinlock_producer_wait_counter;
 };
 
 #endif
