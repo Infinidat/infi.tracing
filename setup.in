@@ -1,3 +1,11 @@
+from setuptools.extension import Extension
+
+import sys
+if 'setuptools.extension' in sys.modules:
+    m = sys.modules['setuptools.extension']
+    m.Extension.__dict__ = m._Extension.__dict__
+
+
 SETUP_INFO = dict(
     name = '${project:name}',
     version = '${infi.recipe.template.version:version}',
@@ -39,8 +47,6 @@ if SETUP_INFO['url'] is None:
     _ = SETUP_INFO.pop('url')
 
 def build_ext_modules():
-    from setuptools.extension import Extension
-
     return [Extension("infi.tracing.ctracing",
                language="c++",
                sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp", 
@@ -54,14 +60,7 @@ def build_ext_modules():
 def setup():
     from setuptools import setup as _setup
     from setuptools import find_packages
-    try:
-        from Cython.Distutils import build_ext
-        SETUP_INFO['ext_modules'] = build_ext_modules()
-        SETUP_INFO['cmdclass'] = {'build_ext': build_ext}
-    except ImportError:
-        import sys
-        sys.stderr.write("cython not found, install before running setup.py.\n")
-
+    SETUP_INFO['ext_modules'] = build_ext_modules()
     SETUP_INFO['packages'] = find_packages('src')
     _setup(**SETUP_INFO)
  
