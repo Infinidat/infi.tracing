@@ -1,0 +1,135 @@
+TODO
+====
+- Check how we trace through lambdas. Specifically, arguments there is a pain.
+
+Caveats
+=======
+- Current method uses an LRU cache that maps between a code object address (frame.f_code) to a trace level decision
+  (to trace or not to trace, etc.).
+  This is theoretically broken, since a code object might get freed and a new code object will get allocated on the 
+  exact same address, leading us to think that we already have a trace decision for that code object when in fact we
+  don't.
+  After discussing it with Rotem, it appears that code objects will not get deallocated except if the code uses "eval",
+  which for 99% of the code (and ours in particular) this is not the case so we don't need to worry about it.
+- We don't support tuple arguments, but then again Python 3 won't support them either (PEP 3113).
+
+Benchmarks and expectations
+===========================
+
+All benchmarks were done on the following setup:
+- Ubuntu 12.10 x64
+- Python 2.7.2
+- 2 i7 L640 CPUs 2.13GHz
+- 6GB RAM
+- Transcend 128GB SSD
+
+Running benchmark_test.py (5 seconds per iter, 5 iters)
+-------------------------------------------------------
+
+commit 10df3efec12393cb7621aa99b24b82eca0840f3f
+  baseline: 1825720.00, 1835449.80, 1842398.00, 1830729.20, 1833467.40 min/avg d -0.43% max/avg d  0.48%
+  test    : 1633125.40, 1635413.40, 1628644.00, 1606401.20, 1633005.20 min/avg d -1.29% max/avg d  0.50% (1.13 times slower than baseline)
+
+  - return 0 immediately when entering our greenlet_trace_func function.
+  - 13% slower than no trace at all.
+
+commit 193804b3304cbc3cde06090b61a19ffdd454258f
+  baseline: 1819488.00, 1833624.00, 1839292.20, 1833125.00, 1816866.80 min/avg d -0.64% max/avg d  0.59%
+  test    :  905229.00,  908321.20,  904548.20,  905278.20,  902933.00 min/avg d -0.26% max/avg d  0.34% (2.02 times slower than baseline)
+
+  - do greenlet and LRU filter lookup/call but nothing more.
+  - ~100% slower than baseline (+87% from null tracing).
+
+commit 9d27a55296f7efeb8b1641db9c8bd269609aad96
+  baseline: 1845614.20, 1838952.00, 1848122.80, 1825571.20, 1835942.80 min/avg d -0.72% max/avg d  0.50%
+  test    : 1503825.00, 1496979.60, 1505625.80, 1503810.80, 1504720.00 min/avg d -0.40% max/avg d  0.18% (1.22 times slower than baseline)
+
+ - just fetch thread-local storage and nothing more.
+ - ~20% slower than baseline (+7% from null tracing).
+
+commit ff8b7994c3cd773f3484fd99a406d74c07b80afb
+  baseline: 1814547.00, 1833100.00, 1859893.40, 1834792.80, 1793069.00 min/avg d -1.86% max/avg d  1.80%
+  test    :  987167.80,  991204.80,  993721.40,  998788.40, 1000324.20 min/avg d -0.71% max/avg d  0.61% (1.84 times slower than baseline)
+  
+  - fetch thread-local storage and gstore. No LRU search.
+  - ~80% slower than baseline (+67% from null tracing).
+ 
+
+Running izbox-mock system till we get to online tests
+-----------------------------------------------------
+
+no tracing: 3.655 3.708 3.636 3.757 3.648: avg 3.680 (baseline)
+			3.637 3.623 3.945 3.897 3.630: avg 3.746   we see that ~2% variability can occur even after averaging 5 samples
+			3.635 3.869 3.767 3.714 3.626: avg 3.722
+trace 1   : 4.026 3.936 3.684 3.812 3.841: avg 3.859 ( ~4.8% time inc)
+			3.948 3.761 3.681 3.821 3.850: avg 3.812
+			3.685 3.803 3.932 3.925 3.705: avg 3.810
+trace 2   : 4.077 3.974 3.976 4.128 4.188: avg 4.068 (~10.5% time inc)
+trace 3   : 3.968 4.233 4.025 3.990 4.229: avg 4.089 (~11.1% time inc)
+trace 4   : 4.358 5.029 5.074 3.983 4.415: avg 4.571 (~24.2% time inc)
+trace 5   : 4.254 4.134 4.951 4.368 4.297: avg 4.400 (~19.5% time inc)
+trace 6   : 5.515 5.517 4.681 4.526 5.480: avg 5.143 (~39.7% time inc)
+			4.664 5.520 4.663 5.488 4.530: avg 4.973   35.1%
+trace 7   : 4.538 5.592 5.342 5.531 5.562: avg 5.313 (~44.3% time inc)
+		        5.574 5.858 4.676 5.550 5.571: avg 5.445
+trace 8   : 6.329 6.501 6.441 6.339 6.338: avg 6.389 (~73.6% time inc)
+
+trace 1:
+ - logging returns immediately (doesn't do anything)
+ - This is the overhead we have to pay in Python for simply setting a profile function using setprofile.
+
+trace 2: 
+ - logging suspended (does thread storage + greenlet lookup but nothing more)
+ - this means that the overhead on fetching a per-greenlet storage is ~5% using the "last frame" system
+
+trace 3:
+ - filter returns NO_TRACE
+
+trace 4:
+  - filter: accept src/izbox, reject izbox.utils.container and izbox.state_machine.fysom._is_base_string
+  - cython fprintf to log file gid,depth,module,func,fname,line (not serializing args)
+
+trace 5:
+  - filter: accept src/izbox, reject izbox.utils.container and izbox.state_machine.fysom._is_base_string
+  - cython fprintf to /dev/null gid,depth,module,func,fname,line (not serializing args)
+
+trace 6:
+  - same as trace 5, but no fprint at all.
+  - call inspect.getargvalues on the frame for the call (not on return)
+
+trace 7:
+  - same as trace 6, but disabling gc when logging calls (so no gc will run in inspect.getargvalues).
+  - looks like it makes things a bit worse
+
+trace 8:
+  - tracing commit 38b46426e961ea6d38727c6ed260f579957aefaa
+  - output to syslog
+
+Old Notes (not reflecting current code)
+=======================================
+
+trace 2 (old code):
+  - old benchmark: 4.11, 3.8, 3.78, 4.15, 3.8  : avg 3.93 (~2.3% time inc)
+  - filter: accept src/izbox
+  - just take GIL
+
+trace 3 (old code):
+  - old benchmark: 4.82, 4.76, 5.44, 4.85, 5.43: avg 5.06 (~31.7% time inc)
+  - filter: accept src/izbox
+  - Python enqueue fname/line to array
+
+tests/benchmark_test.py:
+  - no setprofile: 0.7638 seconds for 1000000 iterations (~1309243 iters/sec)
+  - current ctracing setprofile: 2.0446 seconds for 1000000 iterations (~489093 iters/sec)
+  - slowdown: x2.67
+
+
+Determining the current greenlet and thread
+-------------------------------------------
+1. First method tried: using API calls (PyGreenlet_Current(), etc.). Problem is that they require GIL and that makes
+   them slow.
+
+Some things noticed when experimenting:
+- frame->f_back is 0 when switching to a new greenlet.
+- frame->f_tstate correponds to a (posix) thread.
+- thread id can be obtained by doing: frame->f_tstate->thread_id
