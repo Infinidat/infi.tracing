@@ -58,11 +58,11 @@ int main(int, char*[]) {
     return 0;
 }
 """
-    with open("/tmp/boost_version.cpp", "w") as f:
+    with open("boost_version.cpp", "w") as f:
         f.write(code)
 
-    subprocess.check_output("g++ /tmp/boost_version.cpp -o /tmp/boost_version", shell=True)
-    boost_version_str = subprocess.check_output("/tmp/boost_version")
+    subprocess.check_output("g++ boost_version.cpp -o boost_version", shell=True)
+    boost_version_str = subprocess.check_output("boost_version")
 
     return boost_version_str.strip()
 
