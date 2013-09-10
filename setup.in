@@ -67,17 +67,26 @@ int main(int, char*[]) {
     return boost_version_str.strip()
 
 
-def build_ext_modules():
-    boost_version = find_boost_version()
+def get_libraries():
+    from platform import system
+    from glob import glob
+    if system() == "Linux":
+        boost_version = find_boost_version()
+        return [":libboost_chrono.so.{}".format(boost_version),
+                          ":libboost_thread.so.{}".format(boost_version)]
+    if system() == "Darwin":
+        return ["boost_chrono-mt", "boost_thread-mt"]
+    raise NotImplementedError("unsupported operating system")
 
+
+def build_ext_modules():
     return [Extension("infi.tracing.ctracing",
                language="c++",
-               sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp", 
+               sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
                         "src/infi/tracing/trace_dump.cpp"],
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
-               libraries=[":libboost_chrono.so.{}".format(boost_version), 
-                          ":libboost_thread.so.{}".format(boost_version)],
+               libraries=get_libraries(),
                extra_compile_args=["-Wno-format-security"])]
 
 
@@ -87,6 +96,6 @@ def setup():
     SETUP_INFO['ext_modules'] = build_ext_modules()
     SETUP_INFO['packages'] = find_packages('src')
     _setup(**SETUP_INFO)
- 
+
 if __name__ == '__main__':
     setup()
