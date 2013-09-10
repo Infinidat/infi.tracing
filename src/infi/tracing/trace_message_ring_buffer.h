@@ -1,11 +1,8 @@
 #ifndef __trace_message_ring_buffer_h__
 #define __trace_message_ring_buffer_h__
 
-#include <stdio.h> // debug
-#include <mutex>
-#include <condition_variable>
 #include <cstring>
-#include <atomic>
+#include <boost/atomic.hpp>
 
 #include "trace_message.h"
 
@@ -144,7 +141,7 @@ public:
     unsigned long get_spinlock_producer_wait_counter() const { return spinlock_producer_wait_counter.load(); }
 
 private:
-    inline void lock_element(int i, std::atomic_ulong& counter) {
+    inline void lock_element(int i, boost::atomic_ulong& counter) {
         bool collision = false;
         while (busy[i].test_and_set()) {
             collision = true;
@@ -155,15 +152,15 @@ private:
     }
 
     TraceMessage elements[RING_BUFFER_SIZE];
-    std::atomic_flag busy[RING_BUFFER_SIZE];
-    std::atomic_flag has_data[RING_BUFFER_SIZE];
+    boost::atomic_flag busy[RING_BUFFER_SIZE];
+    boost::atomic_flag has_data[RING_BUFFER_SIZE];
 
-    std::atomic_int head;
+    boost::atomic_int head;
     int tail;   // no need to make this atomic since we've got only one consumer.
 
-    std::atomic_ulong overflow_counter;
-    std::atomic_ulong spinlock_consumer_wait_counter;
-    std::atomic_ulong spinlock_producer_wait_counter;
+    boost::atomic_ulong overflow_counter;
+    boost::atomic_ulong spinlock_consumer_wait_counter;
+    boost::atomic_ulong spinlock_producer_wait_counter;
 };
 
 #endif

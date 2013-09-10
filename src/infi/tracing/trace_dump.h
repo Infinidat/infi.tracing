@@ -1,7 +1,8 @@
 #ifndef __trace_dump_h__
 #define __trace_dump_h__
 
-#include <thread>
+#include <boost/thread.hpp>
+#include <boost/smart_ptr.hpp>
 
 #include "trace_message.h"
 #include "trace_message_ring_buffer.h"
@@ -24,7 +25,7 @@ protected:
 private:
 	bool shutdown;
 	TraceMessageRingBuffer& ring_buffer;
-	std::unique_ptr<std::thread> thread;
+	boost::scoped_ptr<boost::thread> thread;
 };
 
 class FileTraceDump: public TraceDump {

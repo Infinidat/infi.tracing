@@ -1,7 +1,7 @@
 #ifndef __thread_storage_h
 #define __thread_storage_h
 
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
 
 #define NO_TRACE_FROM_DEPTH_DISABLED 314159  // Python's stack cannot be that big anyhow.
 
@@ -62,12 +62,13 @@ public:
 	}
 
 protected:
-	typedef std::unordered_map<long, GreenletStorage> GIDMap;
+	typedef boost::unordered_map<long, GreenletStorage> GIDMap;
 	GIDMap gid_map;
 
 private:
-	ThreadStorage(const ThreadStorage&) = delete;
-	ThreadStorage& operator=(const ThreadStorage&) = delete;
+	// Supporting old compilers - no c++11 for us:
+	// ThreadStorage(const ThreadStorage&) = delete;
+	// ThreadStorage& operator=(const ThreadStorage&) = delete;
 };
 
 extern void init_thread_storage_once();
