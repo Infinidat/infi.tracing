@@ -62,7 +62,7 @@ int main(int, char*[]) {
         f.write(code)
 
     subprocess.check_output("g++ boost_version.cpp -o boost_version", shell=True)
-    boost_version_str = subprocess.check_output("boost_version")
+    boost_version_str = subprocess.check_output("./boost_version")
 
     return boost_version_str.strip()
 
