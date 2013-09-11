@@ -1,3 +1,5 @@
+#include <boost/chrono.hpp>
+#include <stdio.h>
 #include <syslog.h>
 #include "trace_dump.h"
 
@@ -9,7 +11,7 @@ TraceDump::~TraceDump() {
 
 void TraceDump::start() {
 	if (!thread) {
-		thread.reset(new std::thread(&TraceDump::thread_func, this));
+		thread.reset(new boost::thread(&TraceDump::thread_func, this));
 	}
 }
 
@@ -17,7 +19,7 @@ void TraceDump::stop() {
 	if (thread) {
 		shutdown = true;
 		thread->join();
-		thread.reset(nullptr);
+		thread.reset();
 	}
 
 	while (pop_and_process())
@@ -27,7 +29,7 @@ void TraceDump::stop() {
 void TraceDump::thread_func() {
 	while (!shutdown) {
 		if (!pop_and_process()) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
 		}
 	}
 }

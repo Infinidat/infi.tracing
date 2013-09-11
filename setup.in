@@ -46,16 +46,49 @@ SETUP_INFO = dict(
 if SETUP_INFO['url'] is None:
     _ = SETUP_INFO.pop('url')
 
+
+def find_boost_version():
+    import subprocess
+    code = r"""
+#include <boost/version.hpp>
+#include <stdio.h>
+
+int main(int, char*[]) {
+    printf("%d.%d.%d\n", BOOST_VERSION / 100000, BOOST_VERSION / 100 % 1000, BOOST_VERSION % 100);
+    return 0;
+}
+"""
+    with open("boost_version.cpp", "w") as f:
+        f.write(code)
+
+    subprocess.check_output("g++ boost_version.cpp -o boost_version", shell=True)
+    boost_version_str = subprocess.check_output("./boost_version")
+
+    return boost_version_str.strip()
+
+
+def get_libraries():
+    from platform import system
+    from glob import glob
+    if system() == "Linux":
+        boost_version = find_boost_version()
+        return [":libboost_chrono.so.{}".format(boost_version),
+                          ":libboost_thread.so.{}".format(boost_version)]
+    if system() == "Darwin":
+        return ["boost_chrono-mt", "boost_thread-mt"]
+    raise NotImplementedError("unsupported operating system")
+
+
 def build_ext_modules():
     return [Extension("infi.tracing.ctracing",
                language="c++",
-               sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp", 
+               sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
                         "src/infi/tracing/trace_dump.cpp"],
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
-               libraries=["stdc++"],
-               extra_compile_args=["-std=c++11", "-Wno-format-security"],
-               extra_link_args=["-std=c++11"])]
+               libraries=get_libraries(),
+               extra_compile_args=["-Wno-format-security"])]
+
 
 def setup():
     from setuptools import setup as _setup
@@ -63,6 +96,6 @@ def setup():
     SETUP_INFO['ext_modules'] = build_ext_modules()
     SETUP_INFO['packages'] = find_packages('src')
     _setup(**SETUP_INFO)
- 
+
 if __name__ == '__main__':
     setup()

@@ -35,7 +35,9 @@ cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
 # cost even if the GIL context wasn't reached inside the function.
 # That's why we had to create this function, so GIL won't get called if this isn't called.
 cdef inline long get_current_gid() with gil:
-    return <long> PyGreenlet_GetCurrent()
+    cdef PyGreenlet* g = PyGreenlet_GetCurrent()
+    Py_DECREF(<PyObject*> g)
+    return <long> g
 
 cdef inline GreenletStorage* get_gstore_on_call(ThreadStorage* tstore, PyFrameObject* frame) nogil:
     global gid_hit, gid_miss, gstore_hit, gstore_miss
