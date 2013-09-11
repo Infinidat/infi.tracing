@@ -31,7 +31,9 @@ public:
 
 class ThreadStorage {
 public:
-	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), last_gstorage(0), gid_map() {}
+	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), last_gstorage(0), gid_map() {
+		gid_map.reserve(32);
+	}
 
 	int enabled;
 	long last_frame;
