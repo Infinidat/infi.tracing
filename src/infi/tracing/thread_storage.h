@@ -31,10 +31,11 @@ public:
 
 class ThreadStorage {
 public:
-	ThreadStorage() : enabled(1), last_frame(0), last_gid(-1), last_gstorage(0), gid_map() {
+	ThreadStorage(unsigned long _id) : id(_id), enabled(1), last_frame(0), last_gid(-1), last_gstorage(0), gid_map() {
 		gid_map.reserve(32);
 	}
 
+	unsigned long id;
 	int enabled;
 	long last_frame;
 	long last_gid;

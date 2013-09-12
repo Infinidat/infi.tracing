@@ -5,9 +5,9 @@ include "ctracing_log_serialize.pyx"
 
 cdef char* UNKNOWN_MODULE = "<unknown>"
 
-
-cdef inline bool serialize_prefix(char direction, long gid, long depth, PyFrameObject* frame, 
+cdef inline bool serialize_prefix(char direction, long tid, long gid, long depth, PyFrameObject* frame, 
                                   TraceMessage* message) with gil:
+    global pid
     cdef:
         char* file_name
         char* func_name
@@ -23,10 +23,11 @@ cdef inline bool serialize_prefix(char direction, long gid, long depth, PyFrameO
     else:
         module_name = UNKNOWN_MODULE
 
-    return message.printf("%c,%d:%d,%s:%d,%s,%s", direction, gid, depth, file_name, line_no, module_name, func_name)
+    return message.printf("%c,%d:%lu:%d:%d,%s:%d,%s,%s", direction, pid, tid % 32768, gid % 32768, depth, 
+                          file_name, line_no, module_name, func_name)
 
 
-cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
+cdef void log_call(int trace_level, long tid, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
     global trace_message_ring_buffer
     cdef:
         int locals_i = 0
@@ -36,7 +37,7 @@ cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, 
         return
 
     try:
-        if not serialize_prefix('>', gid, depth, frame, trace_message):
+        if not serialize_prefix('>', tid, gid, depth, frame, trace_message):
             # TODO: not enough room to write this down, maybe we should write TRUNCATED or something like that.
             return
 
@@ -59,7 +60,7 @@ cdef void log_call(int trace_level, long gid, long depth, PyFrameObject* frame, 
     finally:
         trace_message_ring_buffer.commit_push(trace_message)
 
-cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
+cdef void log_return(int trace_level, long tid, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
     global trace_message_ring_buffer
     cdef TraceMessage* trace_message = trace_message_ring_buffer.reserve_push()
     cdef PyObject* exc_type = frame.f_tstate.exc_type
@@ -69,7 +70,7 @@ cdef void log_return(int trace_level, long gid, long depth, PyFrameObject* frame
         return        
 
     try:
-        if not serialize_prefix('<', gid, depth, frame, trace_message):
+        if not serialize_prefix('<', tid, gid, depth, frame, trace_message):
             # TODO: not enough room to write this down, maybe we should write TRUNCATED or something like that.
             return
 

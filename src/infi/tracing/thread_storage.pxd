@@ -10,6 +10,7 @@ cdef extern from "thread_storage.h":
         bool enabled
 
     cdef cppclass ThreadStorage:
+        unsigned long id
         int enabled
         long last_frame
         long last_gid
