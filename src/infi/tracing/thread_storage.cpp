@@ -27,7 +27,7 @@ ThreadStorage* get_thread_storage() {
 	void* ptr = pthread_getspecific(storage_key);
 	pthread_t id = pthread_self();
 	if (ptr == NULL) {
-		ptr = (void*)new ThreadStorage(static_cast<unsigned long>(id));
+		ptr = (void*)new ThreadStorage((unsigned long) id);
 		(void) pthread_setspecific(storage_key, ptr);
 	}
 	return (ThreadStorage*) ptr;
