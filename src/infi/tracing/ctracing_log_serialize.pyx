@@ -241,6 +241,11 @@ cdef int dict_repr(PyObject* ptr, TraceMessage* output):
     return true
 
 
+cdef inline bool sub_dict_repr(PyObject* ptr, TraceMessage* output):
+    if not obj_repr(ptr, output):
+        return False
+    return dict_repr(ptr, output)
+
 cdef inline bool write_function_name(PyFunctionObject* func_ptr, TraceMessage* output):
     if func_ptr == NULL:
         return output.write("unknown")
@@ -358,8 +363,11 @@ cdef inline bool fast_repr(PyObject* ptr, TraceMessage* output) with gil:
         return str_or_unicode_repr(false, ptr, output)
     elif PyUnicode_CheckExact(ptr):
         return str_or_unicode_repr(true, ptr, output)
-    elif PyDict_CheckExact(ptr):
-        return dict_repr(ptr, output)
+    elif PyDict_Check(ptr):
+        if PyDict_CheckExact(ptr):
+            return dict_repr(ptr, output)
+        else:
+            return sub_dict_repr(ptr, output)
     elif PyList_CheckExact(ptr):
         return list_or_tuple_repr(true, ptr, output)
     elif PyTuple_CheckExact(ptr):

@@ -132,6 +132,7 @@ cdef extern from "Python.h":
     PyObject* PyTuple_GET_ITEM(PyObject*, int)
 
     # Dict ops
+    int PyDict_Check(PyObject*)
     int PyDict_CheckExact(PyObject*)
     Py_ssize_t PyDict_Size(PyObject*)
     int PyDict_Next(PyObject* p, Py_ssize_t* ppos, PyObject** pkey, PyObject** pvalue)

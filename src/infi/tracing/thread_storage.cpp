@@ -25,8 +25,9 @@ ThreadStorage* get_thread_storage() {
 	// To save some cycles we moved the pthread_once(...) call to a new function that is called whenever setting a
 	// trace.
 	void* ptr = pthread_getspecific(storage_key);
+	pthread_t id = pthread_self();
 	if (ptr == NULL) {
-		ptr = (void*)new ThreadStorage();
+		ptr = (void*)new ThreadStorage(static_cast<unsigned long>(id));
 		(void) pthread_setspecific(storage_key, ptr);
 	}
 	return (ThreadStorage*) ptr;

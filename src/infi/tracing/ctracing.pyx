@@ -4,6 +4,7 @@ from defs cimport *
 from thread_storage cimport (ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, 
                              init_thread_storage_once, get_thread_storage)
 from trace_message_ring_buffer cimport TraceMessageRingBuffer
+from os import getpid
 
 DEFAULT_FUNC_CACHE_SIZE = 10000
 
@@ -15,6 +16,7 @@ cdef enum:
     TRACE_FUNC_REPR       = 4
 
 
+cdef unsigned long pid = -1
 cdef unsigned long gid_hit = 0, gid_miss = 0
 cdef unsigned long gstore_hit = 0, gstore_miss = 0
 
@@ -106,11 +108,13 @@ cdef inline GreenletStorage* get_gstore_on_return(ThreadStorage* tstore, PyFrame
 cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int what, PyObject* arg) nogil:
     cdef:
         int trace_level = NO_TRACE
+        unsigned long tid
         long gid, depth, no_trace_from_depth
         ThreadStorage* tstore
         GreenletStorage* gstore = NULL
 
     tstore = get_thread_storage()
+    tid = tstore.id
 
     if what == PyTrace_CALL:
         gstore = get_gstore_on_call(tstore, frame)
@@ -154,17 +158,18 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         return 0
 
     if what == PyTrace_CALL:
-        log_call(trace_level, gid, depth, frame, arg)
+        log_call(trace_level, tid, gid, depth, frame, arg)
     else:
-        log_return(trace_level, gid, depth, frame, arg)
+        log_return(trace_level, tid, gid, depth, frame, arg)
 
     return 0
 
 
 def ctracing_set_profile(filter_func):
-    global trace_level_func_cache, _PyGreenlet_API
+    global pid, trace_level_func_cache, _PyGreenlet_API
 
     init_thread_storage_once()
+    pid = <long> getpid()  # We set this once per process so we won't call this method on every trace.
 
     cdef ThreadStorage* tstore
 
