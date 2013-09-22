@@ -144,7 +144,7 @@ def SyslogWriter(buffer_size, facility, address=None, host_name="", application_
         address = default_syslog_address()
     if _check_syslog_address(address) == 'udp':
         return PySyslogWriter_create_with_udp_socket(buffer_size, host_name, application_name, process_id, facility,
-                                                     address[0], address[1])
+                                                     bool(rfc5424), address[0], address[1])
     else:
         return PySyslogWriter_create_with_unix_socket(buffer_size, host_name, application_name, process_id, facility,
-                                                      address)
+                                                      bool(rfc5424), address)
