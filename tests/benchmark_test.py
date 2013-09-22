@@ -63,7 +63,7 @@ def trace_filter(frame):
     return TRACE_FUNC_PRIMITIVES
 
 
-tracing_output_to_syslog("benchmark", LOG_LOCAL0)
+tracing_output_to_syslog(LOG_LOCAL0, application_name="benchmark")
 # tracing_output_to_file("/tmp/trace.log")
 set_tracing(trace_filter)
 

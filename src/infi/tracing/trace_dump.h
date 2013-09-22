@@ -1,6 +1,7 @@
 #ifndef __trace_dump_h__
 #define __trace_dump_h__
 
+#include <string>
 #include <boost/thread.hpp>
 #include <boost/smart_ptr.hpp>
 
@@ -9,43 +10,76 @@
 
 class TraceDump {
 public:
-	TraceDump(TraceMessageRingBuffer& _ring_buffer) : shutdown(false), ring_buffer(_ring_buffer) {}
+	TraceDump(TraceMessageRingBuffer* _ring_buffer) : message_buffer(), shutdown(false), ring_buffer(_ring_buffer) {}
 	virtual ~TraceDump();
 
-	void start();
+	virtual void start();
 
-	void stop();
+	virtual void stop();
 
 protected:
+	TraceMessage message_buffer;
+
 	void thread_func();
 	bool pop_and_process();
-	virtual void process(const char* message) = 0;
+	virtual void process() = 0;
 	virtual void flush() {}
+
+	virtual void process_overflow(unsigned long messages_lost);
 
 private:
 	bool shutdown;
-	TraceMessageRingBuffer& ring_buffer;
+	TraceMessageRingBuffer* ring_buffer;
 	boost::scoped_ptr<boost::thread> thread;
 };
 
 class FileTraceDump: public TraceDump {
 public:
-	FileTraceDump(TraceMessageRingBuffer& _ring_buffer, FILE* f) : TraceDump(_ring_buffer), handle(f) {}
+	FileTraceDump(TraceMessageRingBuffer* _ring_buffer, FILE* f, bool _close_handle):
+		TraceDump(_ring_buffer), 
+		handle(f),
+		close_handle(_close_handle) {}
+
+	void stop();
 
 protected:
-	void process(const char* message);
+	void process();
 	void flush();
 
 private:
 	FILE* handle;
+	bool close_handle;
 };
+
+class SyslogSocket;
 
 class SyslogTraceDump: public TraceDump {
 public:
-	SyslogTraceDump(TraceMessageRingBuffer& _ring_buffer) : TraceDump(_ring_buffer) {}
+	void stop();
+
+	static SyslogTraceDump* create_with_unix_socket(TraceMessageRingBuffer* ring_buffer, const char* _host_name,
+												    const char* application_name, const char* _process_id, int facility,
+												    bool rfc5424, const char* address);
+
+	static SyslogTraceDump* create_with_udp_socket(TraceMessageRingBuffer* ring_buffer, const char* host_name,
+												   const char* application_name, const char* process_id, int facility,
+												   bool rfc5424, const char* address, int port);
 
 protected:
-	void process(const char* message);
+	SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const char* _host_name, const char* _application_name,
+					const char* _process_id, int _facility, bool _rfc5424, SyslogSocket* _socket);
+
+	std::string host_name;
+	std::string application_name;
+	std::string process_id;
+	bool rfc5424;
+	int facility;
+	boost::scoped_ptr<SyslogSocket> socket;
+	char syslog_buffer[TRACE_MESSAGE_MAX_SIZE + 1024];
+
+	void process();
+
+	int format_message();
 };
 
 #endif

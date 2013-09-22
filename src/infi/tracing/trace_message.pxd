@@ -13,3 +13,5 @@ cdef extern from "trace_message.h":
         int write_offset() nogil
         bool write(const char* str) nogil
         bool printf(const char* fmt, ...) nogil
+        void set_timestamp() nogil
+        void set_severity(int severity) nogil

@@ -3,8 +3,11 @@
 
 #include <stdarg.h>
 #include <algorithm>
+#include <cstring>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #define TRACE_MESSAGE_MAX_SIZE (1024 - 1)
+#define SEVERITY_NOTSET (-1)
 
 template <typename T>
 T clip(const T& n, const T& lower, const T& upper) {
@@ -13,14 +16,27 @@ T clip(const T& n, const T& lower, const T& upper) {
 
 class TraceMessage {
 public:
+	typedef boost::posix_time::ptime ptime;
+	typedef boost::posix_time::microsec_clock microsec_clock;
+
 	TraceMessage() {
 		recycle();
+	}
+
+	void operator=(const TraceMessage& other) {
+		timestamp = other.timestamp;
+		severity = other.severity;
+		write_index = other.write_index;
+		limit_index = other.limit_index;
+		std::strncpy(buffer, other.buffer, sizeof(buffer));
 	}
 
 	void recycle() {
 		write_index = 0;
 		limit_index = TRACE_MESSAGE_MAX_SIZE;
 		buffer[0] = buffer[TRACE_MESSAGE_MAX_SIZE] = '\0';
+		severity = SEVERITY_NOTSET;
+		timestamp = ptime();
 	}
 
 	const char* get_buffer() const { return buffer; }
@@ -90,10 +106,28 @@ public:
 		}
 	}
 
+	void set_timestamp() {
+		timestamp = microsec_clock::universal_time();
+	}
+
+	const ptime& get_timestamp() const {
+		return timestamp;
+	}
+
+	void set_severity(int _severity) {
+		severity = _severity;
+	}
+
+	int get_severity() const {
+		return severity;
+	}
+
 private:
 	char buffer[TRACE_MESSAGE_MAX_SIZE + 1];
 	int write_index;
 	int limit_index;
+	int severity;
+	ptime timestamp;
 };
 
 #endif

@@ -2,11 +2,11 @@
 #define __trace_message_ring_buffer_h__
 
 #include <cstring>
+#include <boost/assert.hpp>
 #include <boost/atomic.hpp>
+#include <boost/scoped_array.hpp>
 
 #include "trace_message.h"
-
-#define RING_BUFFER_SIZE (65536)  // 64K messages = ~64MB, queue size must be a power of 2.
 
 // This is a multi-producer, single-consumer lock-free* ring buffer, where producers in this case are (real) threads
 // and the consumer is the trace dump thread.
@@ -69,10 +69,19 @@
 //      consumer thread.
 class TraceMessageRingBuffer {
 public:
-    TraceMessageRingBuffer() : 
-        elements(), busy(), has_data(), head(0), tail(0), overflow_counter(0), spinlock_consumer_wait_counter(0),
+    TraceMessageRingBuffer(size_t _capacity) : 
+        capacity(_capacity),
+        elements(new TraceMessage[_capacity]), 
+        busy(new boost::atomic_flag[_capacity]),
+        has_data(new boost::atomic_flag[_capacity]),
+        head(0), 
+        tail(0),
+        overflow_counter(0),
+        resettable_overflow_counter(0),
+        spinlock_consumer_wait_counter(0),
         spinlock_producer_wait_counter(0) {
-        for (int i = 0; i < RING_BUFFER_SIZE; ++i) {
+        BOOST_VERIFY(capacity > 1 && !(capacity & (capacity - 1)));  // make sure buffer size is a power of 2
+        for (size_t i = 0; i < capacity; ++i) {
             elements[i].recycle();
             busy[i].clear();
             has_data[i].clear();
@@ -82,13 +91,13 @@ public:
     // Returns an empty slot that the producer can write to. When the producer is finished writing it calls commit_push
     // with the same pointer it received here.
     TraceMessage* reserve_push() {       
-        int reserved_space = head++;  // using std's atomic operator++
+        size_t reserved_space = head++;  // using std's atomic operator++
 
-        // We want to keep the indexes inside 0..RING_BUFFER_SIZE-1 range.
-        if (reserved_space >= RING_BUFFER_SIZE) {
+        // We want to keep the indexes inside 0..capacity-1 range.
+        if (reserved_space >= capacity) {
             // prevent counter overflow - queue size must be a power of 2.
-            head &= RING_BUFFER_SIZE - 1;
-            reserved_space &= RING_BUFFER_SIZE - 1;
+            head &= capacity - 1;
+            reserved_space &= capacity - 1;
         }
 
         TraceMessage* elem = &elements[reserved_space];
@@ -101,18 +110,19 @@ public:
         // occurred.
         if (has_data[reserved_space].test_and_set()) {
             overflow_counter++;
+            resettable_overflow_counter++;
         }
 
         return elem;
     }
 
     void commit_push(TraceMessage* element) {
-        busy[element - elements].clear();
+        busy[element - elements.get()].clear();
     }
 
     // Pops a message from the queue and copies it to the buffer. Returns true if a message was copied and false there
     // was no message to copy.
-    bool pop(char* buffer, int maxsize) {
+    bool pop(TraceMessage& message) {
         int i = tail;
 
         lock_element(i, spinlock_producer_wait_counter);
@@ -122,10 +132,10 @@ public:
             busy[i].clear();
             return false;
         } else {
-            tail = (tail + 1) & (RING_BUFFER_SIZE - 1);
+            tail = (tail + 1) & (capacity - 1);
         }
 
-        std::strncpy(buffer, elements[i].get_buffer(), maxsize);
+        message = elements[i];
 
         elements[i].recycle();
         has_data[i].clear();
@@ -135,6 +145,8 @@ public:
     }
 
     unsigned long get_overflow_counter() const { return overflow_counter.load(); }
+
+    unsigned long get_and_reset_overflow_counter() { return resettable_overflow_counter.exchange(0); }
 
     unsigned long get_spinlock_consumer_wait_counter() const { return spinlock_consumer_wait_counter.load(); }
 
@@ -151,14 +163,16 @@ private:
         }
     }
 
-    TraceMessage elements[RING_BUFFER_SIZE];
-    boost::atomic_flag busy[RING_BUFFER_SIZE];
-    boost::atomic_flag has_data[RING_BUFFER_SIZE];
+    size_t capacity;
+    boost::scoped_array<TraceMessage> elements;
+    boost::scoped_array<boost::atomic_flag> busy;
+    boost::scoped_array<boost::atomic_flag> has_data;
 
     boost::atomic_int head;
     int tail;   // no need to make this atomic since we've got only one consumer.
 
     boost::atomic_ulong overflow_counter;
+    boost::atomic_ulong resettable_overflow_counter;
     boost::atomic_ulong spinlock_consumer_wait_counter;
     boost::atomic_ulong spinlock_producer_wait_counter;
 };

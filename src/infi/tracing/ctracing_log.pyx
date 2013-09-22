@@ -58,6 +58,7 @@ cdef void log_call(int trace_level, long tid, long gid, long depth, PyFrameObjec
                     fast_repr(frame.f_localsplus[locals_i], trace_message)
                     inc(locals_i)
     finally:
+        trace_message.set_timestamp()
         trace_message_ring_buffer.commit_push(trace_message)
 
 cdef void log_return(int trace_level, long tid, long gid, long depth, PyFrameObject* frame, PyObject* arg) nogil:
@@ -85,4 +86,5 @@ cdef void log_return(int trace_level, long tid, long gid, long depth, PyFrameObj
                     # PyErr_Fetch that clears the exception from the frame.
                     trace_message.write("exc")
     finally:
+        trace_message.set_timestamp()
         trace_message_ring_buffer.commit_push(trace_message)

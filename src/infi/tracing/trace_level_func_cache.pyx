@@ -28,7 +28,7 @@ cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrame
         import sys
         sys.stderr.write("infi.tracing: filter returned None for frame: {} (filter: {})".format(<object>frame.f_code, 
                                                                                                 <object>filter_func))
-        trace_level_result = TRACE_NONE
+        trace_level_result = NO_TRACE
     trace_level = int(trace_level_result)
     trace_level_func_cache.insert(<long>frame.f_code, trace_level_result)
     return trace_level

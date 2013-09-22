@@ -20,7 +20,7 @@ cdef unsigned long pid = -1
 cdef unsigned long gid_hit = 0, gid_miss = 0
 cdef unsigned long gstore_hit = 0, gstore_miss = 0
 
-cdef TraceMessageRingBuffer trace_message_ring_buffer
+cdef TraceMessageRingBuffer* trace_message_ring_buffer = new TraceMessageRingBuffer(65536)
 
 include "trace_level_func_cache.pyx"
 include "ctracing_log.pyx"
