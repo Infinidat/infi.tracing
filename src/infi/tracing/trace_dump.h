@@ -22,10 +22,14 @@ protected:
 
 	void thread_func();
 	bool pop_and_process();
-	virtual void process() = 0;
+	virtual void process();
 	virtual void flush() {}
 
 	virtual void process_overflow(unsigned long messages_lost);
+
+	void shutdown_thread();
+
+	void process_remaining();
 
 private:
 	bool shutdown;
@@ -39,6 +43,8 @@ public:
 		TraceDump(_ring_buffer), 
 		handle(f),
 		close_handle(_close_handle) {}
+
+	~FileTraceDump();
 
 	void stop();
 
@@ -55,6 +61,8 @@ class SyslogSocket;
 
 class SyslogTraceDump: public TraceDump {
 public:
+	~SyslogTraceDump();
+
 	void stop();
 
 	static SyslogTraceDump* create_with_unix_socket(TraceMessageRingBuffer* ring_buffer, const char* _host_name,

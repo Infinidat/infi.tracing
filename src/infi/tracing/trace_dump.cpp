@@ -15,9 +15,6 @@ using namespace std;
 using namespace boost::posix_time;
 
 TraceDump::~TraceDump() {
-	if (thread) {
-		stop();
-	}
 }
 
 void TraceDump::start() {
@@ -27,14 +24,8 @@ void TraceDump::start() {
 }
 
 void TraceDump::stop() {
-	if (thread) {
-		shutdown = true;
-		thread->join();
-		thread.reset();
-	}
-
-	while (pop_and_process())
-		;
+	shutdown_thread();
+	process_remaining();
 }
 
 void TraceDump::thread_func() {
@@ -70,6 +61,23 @@ void TraceDump::process_overflow(unsigned long messages_lost) {
 	process();
 }
 
+void TraceDump::shutdown_thread() {
+	if (thread) {
+		shutdown = true;
+		thread->join();
+		thread.reset();
+	}
+}
+
+void TraceDump::process_remaining() {
+	while (pop_and_process())
+		;
+}
+
+FileTraceDump::~FileTraceDump() {
+	stop();
+}
+
 void FileTraceDump::process() {
 	fprintf(handle, "%s\n", message_buffer.get_buffer());
 }
@@ -79,7 +87,8 @@ void FileTraceDump::flush() {
 }
 
 void FileTraceDump::stop() {
-	TraceDump::stop();
+	shutdown_thread();
+	process_remaining();
 	if (close_handle) {
 		fclose(handle);
 	}
@@ -193,9 +202,16 @@ SyslogTraceDump::SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const cha
 	process_id = (_process_id == NULL || _process_id[0] == '\0') ? "-" : _process_id;
 }
 
+SyslogTraceDump::~SyslogTraceDump() {
+	stop();
+}
+
 void SyslogTraceDump::stop() {
-	TraceDump::stop();
-	socket->close();
+	shutdown_thread();
+	process_remaining();
+	if (socket) {
+		socket->close();
+	}
 }
 
 void SyslogTraceDump::process() {
