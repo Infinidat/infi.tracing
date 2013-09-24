@@ -6,7 +6,7 @@
 #include <cstring>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define TRACE_MESSAGE_MAX_SIZE (1024 - 1)
+#define TRACE_MESSAGE_MAX_SIZE (32768 - 1)
 #define SEVERITY_NOTSET (-1)
 
 template <typename T>

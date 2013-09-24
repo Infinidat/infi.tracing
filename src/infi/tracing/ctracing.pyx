@@ -1,7 +1,7 @@
 from cython.operator cimport dereference as deref, preincrement as inc, predecrement as dec
 
 from defs cimport *
-from thread_storage cimport (ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED, 
+from thread_storage cimport (ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED,
                              init_thread_storage_once, get_thread_storage)
 from trace_message_ring_buffer cimport TraceMessageRingBuffer
 from os import getpid
@@ -20,7 +20,7 @@ cdef unsigned long pid = -1
 cdef unsigned long gid_hit = 0, gid_miss = 0
 cdef unsigned long gstore_hit = 0, gstore_miss = 0
 
-cdef TraceMessageRingBuffer* trace_message_ring_buffer = new TraceMessageRingBuffer(65536)
+cdef TraceMessageRingBuffer* trace_message_ring_buffer = new TraceMessageRingBuffer(4096)
 
 include "trace_level_func_cache.pyx"
 include "ctracing_log.pyx"
@@ -33,7 +33,7 @@ cdef inline long calc_new_greenlet_depth(PyFrameObject* frame) nogil:
         frame = frame.f_back
     return depth
 
-# Apparently when adding a GIL context to a function, Cython creates on the function's return that adds to the runtime 
+# Apparently when adding a GIL context to a function, Cython creates on the function's return that adds to the runtime
 # cost even if the GIL context wasn't reached inside the function.
 # That's why we had to create this function, so GIL won't get called if this isn't called.
 cdef inline long get_current_gid() with gil:

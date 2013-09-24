@@ -83,7 +83,7 @@ protected:
 	bool rfc5424;
 	int facility;
 	boost::scoped_ptr<SyslogSocket> socket;
-	char syslog_buffer[TRACE_MESSAGE_MAX_SIZE + 1024];
+	char syslog_buffer[32768];
 
 	void process();
 
