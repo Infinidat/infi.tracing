@@ -40,13 +40,13 @@ public:
 	}
 
 	const char* get_buffer() const { return buffer; }
-	
+
 	int write_offset() const { return write_index; }
 
 	int max_size() const { return limit_index; }
-	
+
 	int avail_size() const { return limit_index - write_index; }
-	
+
 	int limit(int size) {
 		int prev_limit_index = limit_index;
 		limit_index = write_index + clip(size, 0, avail_size());

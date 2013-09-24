@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <boost/chrono.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "trace_dump.h"
 
@@ -118,7 +119,9 @@ protected:
 
 class SyslogUNIXSocket : public SyslogSocket {
 public:
-	SyslogUNIXSocket(const char* _address) : SyslogSocket(), address(_address) {}
+	SyslogUNIXSocket(const char* _address) : SyslogSocket(), address(_address) {
+		try_connect();
+	}
 
 	bool try_connect() {
 		close();
@@ -157,40 +160,52 @@ private:
 	std::string address;
 };
 
-class SyslogUDPSocket : public SyslogSocket {
+class SyslogTCPSocket : public SyslogSocket {
 public:
-	SyslogUDPSocket(const char* _address, int _port): SyslogSocket() {
+	SyslogTCPSocket(const char* _address, int _port): SyslogSocket() {
 		address.sin_family = AF_INET;
 		address.sin_addr.s_addr = inet_addr(_address);
 		address.sin_port = htons(_port);
+		try_connect();
 	}
 
 	bool try_connect() {
 		close();
-		fd = socket(AF_INET, SOCK_DGRAM, 0);
+		fd = socket(AF_INET, SOCK_STREAM, 0);
 		if (fd == -1) {
 			return false;
 		}
-		return true;
-	}
-
-	bool send(const char* buffer, ssize_t size) {
-		ssize_t result = sendto(fd, buffer, size, 0, reinterpret_cast<struct sockaddr*>(&address), sizeof(address));
-		if (result != size) {
+		if (::connect(fd, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) != 0) {
 			close();
 			return false;
 		}
 		return true;
 	}
 
+	bool send(const char* buffer, ssize_t size) {
+		// http://tools.ietf.org/html/rfc6587#section-3.4.1
+		// MSG-LEN SP SYSLOG-MSG
+		std::string msg_size = boost::lexical_cast<std::string>(size);
+		int length = msg_size.length();
+		if (::send(fd, msg_size.c_str(), length, 0) == length) {
+			if (::send(fd, " ", 1, 0) == 1) {
+				if (::send(fd, buffer, size, 0) == size) {
+					return true;
+				}
+			}
+		}
+		close();
+		return false;
+	}
+
 private:
 	struct sockaddr_in address;
 };
 
-SyslogTraceDump::SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const char* _host_name, 
+SyslogTraceDump::SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const char* _host_name,
 								 const char* _application_name, const char* _process_id, int _facility, bool _rfc5424,
 								 SyslogSocket* _socket):
-	TraceDump(_ring_buffer), 
+	TraceDump(_ring_buffer),
 	host_name(),
 	application_name(),
 	process_id(),
@@ -215,17 +230,14 @@ void SyslogTraceDump::stop() {
 }
 
 void SyslogTraceDump::process() {
-	if (socket->try_connect()) {
-		ssize_t size = format_message();
-		if (size > 0) {
-			if (!socket->send(syslog_buffer, size)) {
-				if (socket->try_connect()) {
-					socket->send(syslog_buffer, size);
-				}
-
-			}
-		}
-	}
+	ssize_t size = format_message();
+    if (size > 0) {
+        if (!socket->send(syslog_buffer, size)) {
+            if (socket->try_connect()) {
+                socket->send(syslog_buffer, size);
+            }
+        }
+    }
 }
 
 int SyslogTraceDump::format_message() {
@@ -253,7 +265,7 @@ int SyslogTraceDump::format_message() {
 		result = snprintf(syslog_buffer, sizeof(syslog_buffer), "<%d>1 %sZ %s %s %s - - %s", priority, iso_time.c_str(),
 						  host_name.c_str(), application_name.c_str(), process_id.c_str(), message_buffer.get_buffer());
 	} else {
-		result = snprintf(syslog_buffer, sizeof(syslog_buffer), "<%d>[%s]: %s", priority, application_name.c_str(), 
+		result = snprintf(syslog_buffer, sizeof(syslog_buffer), "<%d>[%s]: %s", priority, application_name.c_str(),
 					      message_buffer.get_buffer());
 	}
 
@@ -263,20 +275,20 @@ int SyslogTraceDump::format_message() {
 	} else if (result > 0) {
 		return result + 1;
 	}
-	
+
 	return -1;
 }
 
-SyslogTraceDump* SyslogTraceDump::create_with_unix_socket(TraceMessageRingBuffer* ring_buffer, 
+SyslogTraceDump* SyslogTraceDump::create_with_unix_socket(TraceMessageRingBuffer* ring_buffer,
 	const char* host_name, const char* application_name, const char* process_id, int facility, bool rfc5424,
 	const char* address) {
 	return new SyslogTraceDump(ring_buffer, host_name, application_name, process_id, facility, rfc5424,
 	 						   new SyslogUNIXSocket(address));
 }
 
-SyslogTraceDump* SyslogTraceDump::create_with_udp_socket(TraceMessageRingBuffer* ring_buffer, 
+SyslogTraceDump* SyslogTraceDump::create_with_tcp_socket(TraceMessageRingBuffer* ring_buffer,
 	const char* host_name, const char* application_name, const char* process_id, int facility, bool rfc5424,
 	const char* address, int port) {
 	return new SyslogTraceDump(ring_buffer, host_name, application_name, process_id, facility, rfc5424,
-						       new SyslogUDPSocket(address, port));
+						       new SyslogTCPSocket(address, port));
 }

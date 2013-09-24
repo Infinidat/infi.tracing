@@ -40,7 +40,7 @@ private:
 class FileTraceDump: public TraceDump {
 public:
 	FileTraceDump(TraceMessageRingBuffer* _ring_buffer, FILE* f, bool _close_handle):
-		TraceDump(_ring_buffer), 
+		TraceDump(_ring_buffer),
 		handle(f),
 		close_handle(_close_handle) {}
 
@@ -69,7 +69,7 @@ public:
 												    const char* application_name, const char* _process_id, int facility,
 												    bool rfc5424, const char* address);
 
-	static SyslogTraceDump* create_with_udp_socket(TraceMessageRingBuffer* ring_buffer, const char* host_name,
+	static SyslogTraceDump* create_with_tcp_socket(TraceMessageRingBuffer* ring_buffer, const char* host_name,
 												   const char* application_name, const char* process_id, int facility,
 												   bool rfc5424, const char* address, int port);
 
