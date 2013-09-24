@@ -6,7 +6,7 @@
 #include <cstring>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define TRACE_MESSAGE_MAX_SIZE (1024 - 1)
+#define TRACE_MESSAGE_MAX_SIZE (32768 - 1)
 #define SEVERITY_NOTSET (-1)
 
 template <typename T>
@@ -40,13 +40,13 @@ public:
 	}
 
 	const char* get_buffer() const { return buffer; }
-	
+
 	int write_offset() const { return write_index; }
 
 	int max_size() const { return limit_index; }
-	
+
 	int avail_size() const { return limit_index - write_index; }
-	
+
 	int limit(int size) {
 		int prev_limit_index = limit_index;
 		limit_index = write_index + clip(size, 0, avail_size());

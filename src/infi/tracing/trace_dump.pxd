@@ -17,9 +17,9 @@ cdef extern from "trace_dump.h":
     cdef SyslogTraceDump* SyslogTraceDump_create_with_unix_socket "SyslogTraceDump::create_with_unix_socket"(
         TraceMessageRingBuffer* ring_buffer, const char* host_name, const char* application_name,
         const char* process_id, int facility, bool rfc5424, const char* address) nogil
-    
-    cdef SyslogTraceDump* SyslogTraceDump_create_with_udp_socket "SyslogTraceDump::create_with_udp_socket"(
-        TraceMessageRingBuffer* ring_buffer, const char* host_name, const char* application_name, 
+
+    cdef SyslogTraceDump* SyslogTraceDump_create_with_tcp_socket "SyslogTraceDump::create_with_tcp_socket"(
+        TraceMessageRingBuffer* ring_buffer, const char* host_name, const char* application_name,
         const char* process_id, int facility, bool rfc5424, const char* address, int port) nogil
 
     cdef cppclass FileTraceDump(TraceDump):

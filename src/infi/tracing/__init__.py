@@ -24,13 +24,13 @@ def _filter_all(*args, **kwargs):
 
 def tracing_output_to_syslog(facility, host_name="", application_name="", process_id="", address=None, rfc5424=False):
     global trace_dump
-    from infi.tracing.ctracing import (PySyslogTraceDump_create_with_unix_socket, 
-                                       PySyslogTraceDump_create_with_udp_socket)
+    from infi.tracing.ctracing import (PySyslogTraceDump_create_with_unix_socket,
+                                       PySyslogTraceDump_create_with_tcp_socket)
     _check_syslog_application_name_and_facility(application_name, facility)
     if address is None:
         address = default_syslog_address()
-    if (_check_syslog_address(address) == 'udp'):
-        trace_dump = PySyslogTraceDump_create_with_udp_socket(host_name, application_name, process_id, facility,
+    if (_check_syslog_address(address) == 'tcp'):
+        trace_dump = PySyslogTraceDump_create_with_tcp_socket(host_name, application_name, process_id, facility,
                                                               bool(rfc5424), address[0], address[1])
     else:
         trace_dump = PySyslogTraceDump_create_with_unix_socket(host_name, application_name, process_id, facility,
@@ -135,15 +135,15 @@ def _check_syslog_address(address):
             raise TypeError("syslog address must be a string or an (addr, port) pair")
         if not re.match(r'\d+\.\d+\.\d+\.\d+', address[0]):
             raise ValueError("syslog address first element must be an IP address but got {!r}".format(address[0]))
-        return 'udp'
+        return 'tcp'
 
 def SyslogWriter(buffer_size, facility, address=None, host_name="", application_name="", process_id="", rfc5424=False):
-    from infi.tracing.ctracing import (PySyslogWriter_create_with_unix_socket, PySyslogWriter_create_with_udp_socket)
+    from infi.tracing.ctracing import (PySyslogWriter_create_with_unix_socket, PySyslogWriter_create_with_tcp_socket)
     _check_syslog_application_name_and_facility(application_name, facility)
     if address is None:
         address = default_syslog_address()
-    if _check_syslog_address(address) == 'udp':
-        return PySyslogWriter_create_with_udp_socket(buffer_size, host_name, application_name, process_id, facility,
+    if _check_syslog_address(address) == 'tcp':
+        return PySyslogWriter_create_with_tcp_socket(buffer_size, host_name, application_name, process_id, facility,
                                                      bool(rfc5424), address[0], address[1])
     else:
         return PySyslogWriter_create_with_unix_socket(buffer_size, host_name, application_name, process_id, facility,
