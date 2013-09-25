@@ -3,7 +3,7 @@ from trace_message cimport TraceMessage
 
 cdef extern from "trace_message_ring_buffer.h":
     cdef cppclass TraceMessageRingBuffer:
-        TraceMessageRingBuffer(size_t capacity) nogil
+        TraceMessageRingBuffer(size_t capacity, size_t trace_message_capacity) nogil
         
         TraceMessage* reserve_push() nogil
         void commit_push(TraceMessage* message) nogil

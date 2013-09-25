@@ -61,16 +61,15 @@
 // We use the same "has data" flag to test for overruns. If the producer locks a slot and then sees that the "has data"
 // flag is set, it means that the consumer didn't get to that slot which means that an overrun occurred.
 //
-// TODO move buffer allocation to constructor as argument
 // TODO revisit memroy allocation strategy to avoid copying memory altogether (allocate batches of buffers, etc.)
-// TODO mark on a trace message if there was an overrun and pass it to the consumer so it can log it
 // TODO when the consumer waits on an occupied lock it does a busy loop - we may want to change the API return value
 //      to return three options: "copied data", "no data found", "busy" so a different sleep time can be used by the
 //      consumer thread.
 class TraceMessageRingBuffer {
 public:
-    TraceMessageRingBuffer(size_t _capacity) : 
+    TraceMessageRingBuffer(size_t _capacity, size_t _trace_message_capacity) : 
         capacity(_capacity),
+        trace_message_capacity(_trace_message_capacity),
         elements(new TraceMessage[_capacity]), 
         busy(new boost::atomic_flag[_capacity]),
         has_data(new boost::atomic_flag[_capacity]),
@@ -82,7 +81,7 @@ public:
         spinlock_producer_wait_counter(0) {
         BOOST_VERIFY(capacity > 1 && !(capacity & (capacity - 1)));  // make sure buffer size is a power of 2
         for (size_t i = 0; i < capacity; ++i) {
-            elements[i].recycle();
+            elements[i].realloc(trace_message_capacity);
             busy[i].clear();
             has_data[i].clear();
         }
@@ -152,6 +151,8 @@ public:
 
     unsigned long get_spinlock_producer_wait_counter() const { return spinlock_producer_wait_counter.load(); }
 
+    size_t get_trace_message_capacity() const { return trace_message_capacity; }
+
 private:
     inline void lock_element(int i, boost::atomic_ulong& counter) {
         bool collision = false;
@@ -164,6 +165,7 @@ private:
     }
 
     size_t capacity;
+    size_t trace_message_capacity;
     boost::scoped_array<TraceMessage> elements;
     boost::scoped_array<boost::atomic_flag> busy;
     boost::scoped_array<boost::atomic_flag> has_data;

@@ -20,7 +20,8 @@ cdef unsigned long pid = -1
 cdef unsigned long gid_hit = 0, gid_miss = 0
 cdef unsigned long gstore_hit = 0, gstore_miss = 0
 
-cdef TraceMessageRingBuffer* trace_message_ring_buffer = new TraceMessageRingBuffer(4096)
+# For traces we have a 32k records buffer, each record is 2k long = 64MB buffer
+cdef TraceMessageRingBuffer* trace_message_ring_buffer = new TraceMessageRingBuffer(32768, 2048)
 
 include "trace_level_func_cache.pyx"
 include "ctracing_log.pyx"

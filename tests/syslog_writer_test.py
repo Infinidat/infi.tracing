@@ -14,7 +14,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 from infi.tracing import SyslogWriter
 import syslog
 
-writer = SyslogWriter(16384, syslog.LOG_LOCAL0 >> 3, address=("127.0.0.1", 514), host_name="myhost",
+writer = SyslogWriter(16384, 4096, syslog.LOG_LOCAL0 >> 3, address=("127.0.0.1", 6514), host_name="myhost",
                       application_name="syslog_writer_test", process_id="main", rfc5424=True)
 writer.start()
 

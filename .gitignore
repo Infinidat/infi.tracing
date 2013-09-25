@@ -42,3 +42,8 @@ src/infi/tracing/ctracing.cpp
 src/infi/tracing/ctracing.so
 Cython*
 bootstrap.py
+
+/tests/build
+/boost_version
+/boost_version.cpp
+/setuptools*.egg

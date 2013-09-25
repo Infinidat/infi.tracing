@@ -1,5 +1,4 @@
-from trace_dump cimport (TraceDump, FileTraceDump, SyslogTraceDump,
-                         SyslogTraceDump_create_with_unix_socket, SyslogTraceDump_create_with_tcp_socket)
+from trace_dump cimport (TraceDump, FileTraceDump, SyslogTraceDump, SyslogSocket, SyslogUNIXSocket, SyslogTCPSocket)
 from libc.stdio cimport FILE, fopen, fclose, stdout, stderr
 
 cdef class PyTraceDump:
@@ -41,31 +40,35 @@ cdef class PySyslogTraceDump(PyTraceDump):
         self.thisptr = NULL
 
 
+cdef new_syslog_trace_dump(const char* host_name, const char* application_name, const char* process_id, int facility,
+                           bool rfc5424, SyslogSocket* socket):
+    global trace_message_ring_buffer
+    cdef SyslogTraceDump* trace_dump = new SyslogTraceDump(trace_message_ring_buffer, host_name, application_name,
+                                                           process_id, facility, rfc5424, socket)
+    result = PySyslogTraceDump()
+    result.thisptr = trace_dump
+    return result
+
+
 def PySyslogTraceDump_create_with_unix_socket(const char* host_name, const char* application_name,
                                               const char* process_id, int facility, bool rfc5424, const char* address):
-    global trace_message_ring_buffer
-    result = PySyslogTraceDump()
-    result.thisptr = SyslogTraceDump_create_with_unix_socket(trace_message_ring_buffer, host_name, application_name,
-                                                             process_id, facility, rfc5424, address)
-    return result
+    cdef SyslogUNIXSocket* socket = new SyslogUNIXSocket(address)
+    return new_syslog_trace_dump(host_name, application_name, process_id, facility, rfc5424, socket)
 
 
 def PySyslogTraceDump_create_with_tcp_socket(const char* host_name, const char* application_name,
                                              const char* process_id, int facility, bool rfc5424, const char* address,
                                              int port):
-    global trace_message_ring_buffer
-    result = PySyslogTraceDump()
-    result.thisptr = SyslogTraceDump_create_with_tcp_socket(trace_message_ring_buffer, host_name, application_name,
-                                                            process_id, facility, rfc5424, address, port)
-    return result
+    cdef SyslogTCPSocket* socket = new SyslogTCPSocket(address, port)
+    return new_syslog_trace_dump(host_name, application_name, process_id, facility, rfc5424, socket)
 
 
-cdef class PySyslogWriter:
-    cdef TraceDump* trace_dump
+cdef class PyWriter:
     cdef TraceMessageRingBuffer* ring_buffer
+    cdef TraceDump* trace_dump
 
-    def __cinit__(self, int buffer_size):
-        self.ring_buffer = new TraceMessageRingBuffer(buffer_size)
+    def __cinit__(self):
+        self.ring_buffer = NULL
         self.trace_dump = NULL
 
     def __dealloc__(self):
@@ -87,18 +90,27 @@ cdef class PySyslogWriter:
         self.ring_buffer.commit_push(message)
 
 
-def PySyslogWriter_create_with_unix_socket(int buffer_size, const char* host_name, const char* application_name,
-                                           const char* process_id, int facility, bool rfc5424, const char* address):
-    result = PySyslogWriter(buffer_size)
-    result.trace_dump = SyslogTraceDump_create_with_unix_socket(result.ring_buffer, host_name, application_name,
-                                                                process_id, facility, rfc5424, address)
+cdef new_syslog_writer(int buffer_size, int trace_message_size, const char* host_name, const char* application_name, 
+                       const char* process_id, int facility, bool rfc5424, SyslogSocket* socket):
+    cdef TraceMessageRingBuffer* ring_buffer = new TraceMessageRingBuffer(buffer_size, trace_message_size)
+    cdef SyslogTraceDump* trace_dump = new SyslogTraceDump(ring_buffer, host_name, application_name, process_id,
+                                                           facility, rfc5424, socket)
+    result = PyWriter()
+    result.ring_buffer = ring_buffer
+    result.trace_dump = trace_dump
     return result
 
+def PySyslogWriter_create_with_unix_socket(int buffer_size, int trace_message_size, const char* host_name, 
+                                           const char* application_name, const char* process_id, int facility, 
+                                           bool rfc5424, const char* address):
+    cdef SyslogSocket* socket = new SyslogUNIXSocket(address)
+    return new_syslog_writer(buffer_size, trace_message_size, host_name, application_name, process_id, facility, 
+                             rfc5424, socket)
 
-def PySyslogWriter_create_with_tcp_socket(int buffer_size, const char* host_name, const char* application_name,
-                                          const char* process_id, int facility, bool rfc5424,
-                                          const char* address, int port):
-    result = PySyslogWriter(buffer_size)
-    result.trace_dump = SyslogTraceDump_create_with_tcp_socket(result.ring_buffer, host_name, application_name,
-                                                               process_id, facility, rfc5424, address, port)
-    return result
+
+def PySyslogWriter_create_with_tcp_socket(int buffer_size, int trace_message_size, const char* host_name, 
+                                          const char* application_name, const char* process_id, int facility, 
+                                          bool rfc5424, const char* address, int port):
+    cdef SyslogSocket* socket = new SyslogTCPSocket(address, port)
+    return new_syslog_writer(buffer_size, trace_message_size, host_name, application_name, process_id, facility, 
+                             rfc5424, socket)

@@ -73,7 +73,7 @@ def get_libraries():
     if system() == "Linux":
         boost_version = find_boost_version()
         return [":libboost_chrono.so.{}".format(boost_version),
-                          ":libboost_thread.so.{}".format(boost_version)]
+                ":libboost_thread.so.{}".format(boost_version)]
     if system() == "Darwin":
         return ["boost_chrono-mt", "boost_thread-mt"]
     raise NotImplementedError("unsupported operating system")

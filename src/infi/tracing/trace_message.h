@@ -4,9 +4,9 @@
 #include <stdarg.h>
 #include <algorithm>
 #include <cstring>
+#include <boost/assert.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define TRACE_MESSAGE_MAX_SIZE (32768 - 1)
 #define SEVERITY_NOTSET (-1)
 
 template <typename T>
@@ -19,24 +19,38 @@ public:
 	typedef boost::posix_time::ptime ptime;
 	typedef boost::posix_time::microsec_clock microsec_clock;
 
-	TraceMessage() {
-		recycle();
+	TraceMessage(int _capacity=0): 
+		capacity(0), buffer(0), write_index(0), limit_index(0), severity(SEVERITY_NOTSET), timestamp() {
+		if (_capacity != 0) {
+			realloc(_capacity);
+		}
+	}
+
+	~TraceMessage() {
+		delete[] buffer;
 	}
 
 	void operator=(const TraceMessage& other) {
-		timestamp = other.timestamp;
-		severity = other.severity;
 		write_index = other.write_index;
 		limit_index = other.limit_index;
-		std::strncpy(buffer, other.buffer, sizeof(buffer));
+		severity = other.severity;
+		timestamp = other.timestamp;
+		std::strncpy(buffer, other.buffer, capacity);
 	}
 
 	void recycle() {
 		write_index = 0;
-		limit_index = TRACE_MESSAGE_MAX_SIZE;
-		buffer[0] = buffer[TRACE_MESSAGE_MAX_SIZE] = '\0';
+		limit_index = capacity;
+		buffer[0] = buffer[capacity] = '\0';
 		severity = SEVERITY_NOTSET;
 		timestamp = ptime();
+	}
+
+	void realloc(int new_capacity) {
+		delete[] buffer;
+		capacity = new_capacity;
+		buffer = new char[capacity + 1];
+		recycle();
 	}
 
 	const char* get_buffer() const { return buffer; }
@@ -54,11 +68,11 @@ public:
 	}
 
 	void unlimit() {
-		limit_index = TRACE_MESSAGE_MAX_SIZE;
+		limit_index = capacity;
 	}
 
 	void unlimit(int i) {
-		limit_index = clip(i, 0, TRACE_MESSAGE_MAX_SIZE);
+		limit_index = clip(i, 0, capacity);
 	}
 
 	void rewind(int offset) {
@@ -123,7 +137,8 @@ public:
 	}
 
 private:
-	char buffer[TRACE_MESSAGE_MAX_SIZE + 1];
+	int capacity;
+	char* buffer;
 	int write_index;
 	int limit_index;
 	int severity;

@@ -31,8 +31,8 @@ def trace_filter(frame):
 print("setting profile")
 from syslog import LOG_LOCAL0
 # tracing_output_to_syslog(LOG_LOCAL0, "ctracing_test")
-tracing_output_to_syslog(LOG_LOCAL0, host_name="myhost", application_name="ctracing_test", process_id="myproc",
-                         rfc5424=True, address=("127.0.0.1", 514))
+tracing_output_to_syslog(LOG_LOCAL0 >> 3, host_name="myhost", application_name="ctracing_test", process_id="myproc",
+                         rfc5424=True, address=("127.0.0.1", 6514))
 set_tracing(trace_filter)
 
 print("calling foo")
