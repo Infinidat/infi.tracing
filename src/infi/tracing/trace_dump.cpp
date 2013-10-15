@@ -105,6 +105,7 @@ SyslogSocket::~SyslogSocket() {
 void SyslogSocket::close() {
 	if (fd != -1) {
 		::close(fd);
+		fd = -1;
 	}
 }
 
