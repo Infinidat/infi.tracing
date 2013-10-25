@@ -10,7 +10,11 @@
  *
  */
 
-#include <hashtable.h>
+#ifdef __APPLE__
+	#include <ext/hashtable.h>
+#else
+	#include <hashtable.h>
+#endif
 #include <sstream>
 #include <cassert>
 

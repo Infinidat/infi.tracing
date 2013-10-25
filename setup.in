@@ -84,7 +84,7 @@ def build_ext_modules():
                language="c++",
                sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
                         "src/infi/tracing/trace_dump.cpp"],
-               include_dirs=["src/infi/tracing"],
+               include_dirs=["src/infi/tracing", "/usr/include/c++/4.2.1"],
                define_macros=[("_REENTRANT", 1)],
                libraries=get_libraries(),
                extra_compile_args=["-Wno-format-security"])]
