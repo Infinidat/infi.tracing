@@ -80,6 +80,12 @@ def get_libraries():
 
 
 def build_ext_modules():
+    from platform import platform
+    extra_compile_args = ["-Wno-format-security"]
+    extra_link_args = []
+    if platform().startswith("Darwin-13"):
+        extra_compile_args += ["-stdlib=libstdc++"]
+        extra_link_args += ["-stdlib=libstdc++"]
     return [Extension("infi.tracing.ctracing",
                language="c++",
                sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
@@ -87,7 +93,8 @@ def build_ext_modules():
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
                libraries=get_libraries(),
-               extra_compile_args=["-Wno-format-security"])]
+               extra_compile_args=extra_compile_args,
+               extra_link_args=extra_link_args)]
 
 
 def setup():
