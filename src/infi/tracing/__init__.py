@@ -7,7 +7,7 @@ __all__ = ['set_tracing', 'unset_tracing', 'set_func_cache_size', 'suspend_traci
            'no_tracing_context_recursive', 'no_tracing_recursive',
            'tracing_output_to_syslog', 'tracing_output_to_file', 'tracing_output_to_stdout', 'tracing_output_to_stderr',
            'NO_TRACE', 'NO_TRACE_NESTED', 'TRACE_FUNC_NAME', 'TRACE_FUNC_PRIMITIVES', 'TRACE_FUNC_REPR',
-           'SyslogWriter']
+           'SyslogWriter', 'wait_and_ensure_exit']
 
 # Same as in ctracing:
 NO_TRACE              = 0
@@ -68,6 +68,11 @@ def unset_tracing():
     if trace_dump:
         trace_dump.stop()
         trace_dump = None
+
+
+def wait_and_ensure_exit(seconds=0, exit_code=10):
+    from infi.tracing.ctracing import ctracing_wait_and_ensure_exit
+    ctracing_wait_and_ensure_exit(seconds, exit_code)
 
 
 def set_func_cache_size(size):

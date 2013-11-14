@@ -4,6 +4,8 @@ from defs cimport *
 from thread_storage cimport (ThreadStorage, GreenletStorage, NO_TRACE_FROM_DEPTH_DISABLED,
                              init_thread_storage_once, get_thread_storage)
 from trace_message_ring_buffer cimport TraceMessageRingBuffer
+from wait_and_ensure_exit cimport WaitAndEnsureExit
+
 from os import getpid
 
 DEFAULT_FUNC_CACHE_SIZE = 10000
@@ -219,3 +221,8 @@ def resume():
     cdef ThreadStorage* tstore = get_thread_storage()
     if tstore.enabled <= 0:
         inc(tstore.enabled)
+
+
+def ctracing_wait_and_ensure_exit(seconds, exit_code):
+    cdef WaitAndEnsureExit obj
+    obj.go(seconds, exit_code)
