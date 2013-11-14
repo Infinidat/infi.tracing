@@ -89,7 +89,7 @@ def build_ext_modules():
     return [Extension("infi.tracing.ctracing",
                language="c++",
                sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
-                        "src/infi/tracing/trace_dump.cpp"],
+                        "src/infi/tracing/trace_dump.cpp", "src/infi/tracing/wait_and_ensure_exit.cpp"],
                include_dirs=["src/infi/tracing"],
                define_macros=[("_REENTRANT", 1)],
                libraries=get_libraries(),

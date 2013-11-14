@@ -224,5 +224,5 @@ def resume():
 
 
 def ctracing_wait_and_ensure_exit(seconds, exit_code):
-    cdef WaitAndEnsureExit obj
+    cdef WaitAndEnsureExit* obj = new WaitAndEnsureExit()
     obj.go(seconds, exit_code)
