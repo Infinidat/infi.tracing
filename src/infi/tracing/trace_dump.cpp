@@ -4,6 +4,7 @@
 #include <syslog.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include <cstring>
 #include <boost/chrono.hpp>
@@ -57,7 +58,7 @@ void TraceDump::process_overflow(unsigned long messages_lost) {
 	message_buffer.recycle();
 	message_buffer.set_timestamp();
 	message_buffer.set_severity(4);  // LOG_WARN in syslog - other writers may override this method.
-	message_buffer.printf("lost %ld messages due to overflow", messages_lost);
+	message_buffer.printf("pid %ld lost %ld messages due to overflow", getpid(), messages_lost);
 	process();
 }
 
@@ -252,11 +253,11 @@ int SyslogTraceDump::format_message() {
       	// - STURCTURED-DATA we keep as '-' (NILVALUE)
       	// - MSGID we keep as '-' (NILVALUE)
       	// - MSG is the actual message
-		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>1 %sZ %s %s %s - - %s", 
-						  priority, iso_time.c_str(), host_name.c_str(), application_name.c_str(), process_id.c_str(), 
+		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>1 %sZ %s %s %s - - %s",
+						  priority, iso_time.c_str(), host_name.c_str(), application_name.c_str(), process_id.c_str(),
 						  message_buffer.get_buffer());
 	} else {
-		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>[%s]: %s", priority, 
+		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>[%s]: %s", priority,
 						  application_name.c_str(), message_buffer.get_buffer());
 	}
 
