@@ -48,3 +48,4 @@ bootstrap.py
 /boost_version.cpp
 /setuptools*.egg
 .cache
+eggs
