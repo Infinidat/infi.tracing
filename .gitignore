@@ -49,3 +49,4 @@ bootstrap.py
 /setuptools*.egg
 .cache
 eggs
+parts
