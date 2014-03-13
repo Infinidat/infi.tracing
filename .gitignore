@@ -47,3 +47,6 @@ bootstrap.py
 /boost_version
 /boost_version.cpp
 /setuptools*.egg
+.cache
+eggs
+parts
