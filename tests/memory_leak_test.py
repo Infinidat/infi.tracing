@@ -13,10 +13,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{
 
 import resource
 from time import time
-import gevent
 
 
-def foo():   
+def foo():
     pass
 
 
@@ -49,6 +48,7 @@ def teardown_tracing():
 
 
 def run():
+    import gevent
     foo()
     foo_with_arg(1)
     foo_with_arg([1, 2, 3])
