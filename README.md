@@ -12,19 +12,16 @@ Usage
 -----
 
 
-```python
-from infi.tracing import *
-tracing_output_to_syslog(...) # or to stderr, or stdout
-set_tracing() # by default, traces all functions; you can pass a filter function that accepts a frame and returns True or False
+    from infi.tracing import *
+    tracing_output_to_syslog(...) # or to stderr, or stdout
+    set_tracing() # by default, traces all functions; you can pass a filter function that accepts a frame and returns True or False
 
-with exclude_from_traces_context():
-  pass # to enclude all tracing inside while inside the context
+    with exclude_from_traces_context():
+        pass # to enclude all tracing inside while inside the context
 
-@exclude_from_traces_recursive
-def func():
-  pass # don't trace while out of the stack
-```
-
+    @exclude_from_traces_recursive
+    def func():
+        pass # don't trace while out of the stack
 
 Caveats
 -------
