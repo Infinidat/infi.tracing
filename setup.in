@@ -47,52 +47,28 @@ if SETUP_INFO['url'] is None:
     _ = SETUP_INFO.pop('url')
 
 
-def find_boost_version():
-    import subprocess
-    code = r"""
-#include <boost/version.hpp>
-#include <stdio.h>
-
-int main(int, char*[]) {
-    printf("%d.%d.%d\n", BOOST_VERSION / 100000, BOOST_VERSION / 100 % 1000, BOOST_VERSION % 100);
-    return 0;
-}
-"""
-    with open("boost_version.cpp", "w") as f:
-        f.write(code)
-
-    subprocess.check_output("g++ boost_version.cpp -o boost_version", shell=True)
-    boost_version_str = subprocess.check_output("./boost_version")
-
-    return boost_version_str.strip()
-
-
-def get_libraries():
-    from platform import system
-    from glob import glob
-    if system() == "Linux":
-        boost_version = find_boost_version()
-        return [":libboost_chrono.so.{}".format(boost_version),
-                ":libboost_thread.so.{}".format(boost_version)]
-    if system() == "Darwin":
-        return ["boost_chrono-mt", "boost_thread-mt"]
-    raise NotImplementedError("unsupported operating system")
-
-
 def build_ext_modules():
-    from platform import platform
+    from platform import platform, system
     extra_compile_args = ["-Wno-format-security"]
     extra_link_args = []
     if platform().startswith("Darwin-13"):
         extra_compile_args += ["-stdlib=libstdc++"]
         extra_link_args += ["-stdlib=libstdc++"]
+    if system() in ["Linux", "Darwin"]:
+        extra_compile_args += ["-Wno-strict-prototypes"]
+        platform_specific_sources = ["src/mintsystem/gcc/datetime.c", "src/mintsystem/gcc/mutex.c",
+                                     "src/mintsystem/gcc/semaphore.c", "src/mintsystem/gcc/timer.c"]
+    else:
+        platform_specific_sources = ["src/mintsystem/msvc/datetime.c", "src/mintsystem/msvc/thread.c",
+                                     "src/mintsystem/msvc/timer.c"]
     return [Extension("infi.tracing.ctracing",
                language="c++",
                sources=["src/infi/tracing/ctracing.pyx", "src/infi/tracing/thread_storage.cpp",
-                        "src/infi/tracing/trace_dump.cpp", "src/infi/tracing/wait_and_ensure_exit.cpp"],
-               include_dirs=["src/infi/tracing"],
+                        "src/infi/tracing/trace_dump.cpp", "src/infi/tracing/wait_and_ensure_exit.cpp",
+                        "src/mintomic/mintomic_gcc.c"] + platform_specific_sources,
+               include_dirs=["src/infi/tracing", "src"],
                define_macros=[("_REENTRANT", 1)],
-               libraries=get_libraries(),
+               libraries=[],
                extra_compile_args=extra_compile_args,
                extra_link_args=extra_link_args)]
 

@@ -44,8 +44,6 @@ Cython*
 bootstrap.py
 
 /tests/build
-/boost_version
-/boost_version.cpp
 /setuptools*.egg
 .cache
 eggs

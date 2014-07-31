@@ -31,6 +31,7 @@ def get_and_print_maxrss(baserss=None):
         print("maxrss={}".format(maxrss))
     return maxrss
 
+
 def setup_tracing():
     from infi.tracing import (set_tracing, tracing_output_to_syslog, TRACE_FUNC_PRIMITIVES)
     from syslog import LOG_LOCAL0
@@ -38,7 +39,7 @@ def setup_tracing():
     def should_trace(frame):
         return TRACE_FUNC_PRIMITIVES
 
-    tracing_output_to_syslog("izbox-traces", LOG_LOCAL0)
+    tracing_output_to_syslog(LOG_LOCAL0, application_name="infi-tracing")
     set_tracing(should_trace)
 
 
@@ -52,10 +53,10 @@ def run():
     foo()
     foo_with_arg(1)
     foo_with_arg([1, 2, 3])
-    foo_with_arg({'a': 1, 'b': 2, 'c': [1,2,3], 'd': 213.22, 'e': u'asdasdasd', 'f': 'asdasdasdasd'})
+    foo_with_arg({'a': 1, 'b': 2, 'c': [1, 2, 3], 'd': 213.22, 'e': u'asdasdasd', 'f': 'asdasdasdasd'})
 
     def func():
-       pass
+        pass
 
     foo_with_arg(func)
 

@@ -18,7 +18,7 @@ cdef extern from "thread_storage.h":
 
         GreenletStorage* find_gstorage(long gid) nogil
         GreenletStorage* new_gstorage(long gid) nogil
-        GreenletStorage* del_gstorage(long gid) nogil
+        void del_gstorage(GreenletStorage* ptr) nogil
 
     ThreadStorage* get_thread_storage() nogil
     void init_thread_storage_once() nogil

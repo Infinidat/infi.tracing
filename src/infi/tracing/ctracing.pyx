@@ -132,7 +132,7 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         gid = gstore.gid
 
         if frame.f_back == NULL:
-            tstore.del_gstorage(gstore.gid)
+            tstore.del_gstorage(gstore)
             gstore = NULL
         else:
             dec(gstore.depth)

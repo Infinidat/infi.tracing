@@ -7,20 +7,24 @@
 #include <unistd.h>
 
 #include <cstring>
-#include <boost/chrono.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include "trace_dump.h"
 
 using namespace std;
-using namespace boost::posix_time;
+
+static void* _tracedump_thread_func_trampoline(void* ptr) {
+    static_cast<TraceDump*>(ptr)->thread_func();
+    return NULL;
+}
 
 TraceDump::~TraceDump() {
 }
 
 void TraceDump::start() {
-	if (!thread) {
-		thread.reset(new boost::thread(&TraceDump::thread_func, this));
+	if (!thread_running) {
+		// TODO assume success
+	    mint_thread_create(&thread, _tracedump_thread_func_trampoline, this);
+	    thread_running = true;
 	}
 }
 
@@ -32,7 +36,12 @@ void TraceDump::stop() {
 void TraceDump::thread_func() {
 	while (!shutdown) {
 		if (!pop_and_process()) {
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+#ifdef MINT_COMPILER_MSVC
+			Sleep(10);
+#else
+			struct timespec ts = { .tv_sec=0, .tv_nsec=10 * 1000};
+			nanosleep(&ts, NULL);
+#endif
 		}
 	}
 }
@@ -63,10 +72,10 @@ void TraceDump::process_overflow(unsigned long messages_lost) {
 }
 
 void TraceDump::shutdown_thread() {
-	if (thread) {
+	if (thread_running) {
 		shutdown = true;
-		thread->join();
-		thread.reset();
+		mint_thread_join(thread, NULL);
+		thread_running = false;
 	}
 }
 
@@ -206,14 +215,17 @@ SyslogTraceDump::SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const cha
 }
 
 SyslogTraceDump::~SyslogTraceDump() {
+	delete[] syslog_buffer;
 	stop();
 }
 
 void SyslogTraceDump::stop() {
 	shutdown_thread();
 	process_remaining();
-	if (socket) {
+	if (socket != NULL) {
 		socket->close();
+		delete socket;
+		socket = NULL;
 	}
 }
 
@@ -223,7 +235,7 @@ void SyslogTraceDump::process() {
     	// Try twice to send the message: first time may fail because the connection got reset.
     	for (int i = 0 ; i < 2; ++i) {
 	    	if (socket->try_connect()) {
-		        if (socket->send(syslog_buffer.get(), size)) {
+		        if (socket->send(syslog_buffer, size)) {
 		        	break;
 		        }
 		    }
@@ -240,7 +252,19 @@ int SyslogTraceDump::format_message() {
 
 	int result;
 	if (rfc5424) {
-		string iso_time = to_iso_extended_string(message_buffer.get_timestamp());
+		uint64_t ts = message_buffer.get_timestamp();
+		time_t t = static_cast<time_t>(ts / 1000000);
+		struct tm tm;
+		gmtime_r(&t, &tm);
+
+		char iso_time[128];
+		int l = sprintf(iso_time, "%04d-%02d-%02dT%02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+					    tm.tm_hour, tm.tm_min, tm.tm_sec);
+		int frac = static_cast<int>(ts % 1000000);
+		if (frac != 0) {
+			l += sprintf(&iso_time[l], ",%06d", frac);
+		}
+
 		// RFC 5424 (see https://tools.ietf.org/html/rfc5424):
       	// SYSLOG-MSG      = HEADER SP STRUCTURED-DATA [SP MSG]
       	// HEADER          = PRI VERSION SP TIMESTAMP SP HOSTNAME SP APP-NAME SP PROCID SP MSGID
@@ -253,11 +277,11 @@ int SyslogTraceDump::format_message() {
       	// - STURCTURED-DATA we keep as '-' (NILVALUE)
       	// - MSGID we keep as '-' (NILVALUE)
       	// - MSG is the actual message
-		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>1 %sZ %s %s %s - - %s",
-						  priority, iso_time.c_str(), host_name.c_str(), application_name.c_str(), process_id.c_str(),
+		result = snprintf(syslog_buffer, syslog_buffer_size, "<%d>1 %sZ %s %s %s - - %s",
+						  priority, iso_time, host_name.c_str(), application_name.c_str(), process_id.c_str(),
 						  message_buffer.get_buffer());
 	} else {
-		result = snprintf(syslog_buffer.get(), syslog_buffer_size, "<%d>[%s]: %s", priority,
+		result = snprintf(syslog_buffer, syslog_buffer_size, "<%d>[%s]: %s", priority,
 						  application_name.c_str(), message_buffer.get_buffer());
 	}
 

@@ -4,18 +4,21 @@
 #include <netinet/in.h>
 
 #include <string>
-#include <boost/thread.hpp>
-#include <boost/smart_ptr.hpp>
+#include <mintsystem/thread.h>
 
 #include "trace_message.h"
 #include "trace_message_ring_buffer.h"
 
+static void* _tracedump_thread_func_trampoline(void* ptr);
+
 class TraceDump {
 public:
 	TraceDump(TraceMessageRingBuffer* _ring_buffer):
-		message_buffer(_ring_buffer->get_trace_message_capacity()), 
-		shutdown(false), 
-		ring_buffer(_ring_buffer) {}
+		message_buffer(_ring_buffer->get_trace_message_capacity()),
+		shutdown(false),
+		ring_buffer(_ring_buffer),
+		thread(),
+		thread_running(false) {}
 
 	virtual ~TraceDump();
 
@@ -40,7 +43,10 @@ protected:
 private:
 	bool shutdown;
 	TraceMessageRingBuffer* ring_buffer;
-	boost::scoped_ptr<boost::thread> thread;
+	mint_thread_t thread;
+	bool thread_running;
+
+	friend void* _tracedump_thread_func_trampoline(void* ptr);
 };
 
 
@@ -124,9 +130,9 @@ protected:
 	std::string process_id;
 	bool rfc5424;
 	int facility;
-	boost::scoped_ptr<SyslogSocket> socket;
+	SyslogSocket* socket;
 	int syslog_buffer_size;
-	boost::scoped_array<char> syslog_buffer;
+	char* syslog_buffer;
 
 	void process();
 

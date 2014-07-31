@@ -2,10 +2,16 @@
 #define __trace_message_h__
 
 #include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <algorithm>
 #include <cstring>
-#include <boost/assert.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+
+#ifdef MINT_COMPILER_MSVC
+#include <winbase.h>
+#else
+#include <sys/time.h>
+#endif
 
 #define SEVERITY_NOTSET (-1)
 
@@ -16,21 +22,24 @@ T clip(const T& n, const T& lower, const T& upper) {
 
 class TraceMessage {
 public:
-	typedef boost::posix_time::ptime ptime;
-	typedef boost::posix_time::microsec_clock microsec_clock;
-
-	TraceMessage(int _capacity=0): 
-		capacity(0), buffer(0), write_index(0), limit_index(0), severity(SEVERITY_NOTSET), timestamp() {
-		if (_capacity != 0) {
+	TraceMessage(int _capacity=0):
+		capacity(0), buffer(const_cast<char*>("")), write_index(0), limit_index(0), severity(SEVERITY_NOTSET),
+		timestamp() {
+		if (_capacity > 0) {
 			realloc(_capacity);
 		}
 	}
 
 	~TraceMessage() {
-		delete[] buffer;
+		if (capacity > 0) {
+			delete[] buffer;
+		}
 	}
 
 	void operator=(const TraceMessage& other) {
+		if (other.capacity != capacity) {
+			realloc(other.capacity);
+		}
 		write_index = other.write_index;
 		limit_index = other.limit_index;
 		severity = other.severity;
@@ -43,13 +52,17 @@ public:
 		limit_index = capacity;
 		buffer[0] = buffer[capacity] = '\0';
 		severity = SEVERITY_NOTSET;
-		timestamp = ptime();
+		timestamp = 0;
 	}
 
 	void realloc(int new_capacity) {
-		delete[] buffer;
-		capacity = new_capacity;
-		buffer = new char[capacity + 1];
+		if (capacity > 0) {
+			delete[] buffer;
+		}
+		if (new_capacity > 0) {
+			capacity = new_capacity;
+			buffer = new char[capacity + 1];
+		}
 		recycle();
 	}
 
@@ -121,10 +134,23 @@ public:
 	}
 
 	void set_timestamp() {
-		timestamp = microsec_clock::universal_time();
+#ifdef MINT_COMPILER_MSVC
+		FILETIME ft;
+		GetSystemTimeAsFileTime(&ft);
+		// We do several things here:
+		// 1. convert the windows struct to uint64_t
+		// 2. make the result in microseconds and not 100 nanos
+		// 3. GetSystemTimeAsFileTime returns the 100 nanos since 01/01/1601. We need Epoch (01/01/1970).
+		// 4. We subtract 11644473600000000, which is the number of microseconds between 1970 to 1601.
+		timestamp = ((static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime) / 10 - 11644473600000000;
+#else
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		timestamp = (tv.tv_sec * 1000000 + tv.tv_usec) / 1000;  // to micro
+#endif
 	}
 
-	const ptime& get_timestamp() const {
+	const uint64_t& get_timestamp() const {
 		return timestamp;
 	}
 
@@ -142,7 +168,7 @@ private:
 	int write_index;
 	int limit_index;
 	int severity;
-	ptime timestamp;
+	uint64_t timestamp;
 };
 
 #endif

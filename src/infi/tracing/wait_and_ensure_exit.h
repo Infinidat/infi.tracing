@@ -1,8 +1,9 @@
 #ifndef __wait_and_ensure_exit_h__
 #define __wait_and_ensure_exit_h__
 
-#include <boost/thread.hpp>
-#include <boost/smart_ptr.hpp>
+#include <mintsystem/thread.h>
+
+static void* _waitandensureexit_thread_func_trampoline(void* ptr);
 
 class WaitAndEnsureExit {
 public:
@@ -17,7 +18,9 @@ protected:
 private:
 	int seconds;
 	int exit_code;
-	boost::scoped_ptr<boost::thread> thread;
+    mint_thread_t thread;
+
+    friend void* _waitandensureexit_thread_func_trampoline(void*);
 };
 
 #endif // __wait_and_ensure_exit_h__
