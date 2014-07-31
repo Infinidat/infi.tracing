@@ -39,7 +39,9 @@ void TraceDump::thread_func() {
 #ifdef MINT_COMPILER_MSVC
 			Sleep(10);
 #else
-			struct timespec ts = { .tv_sec=0, .tv_nsec=10 * 1000};
+			struct timespec ts;
+			ts.tv_sec = 0;
+			ts.tv_nsec = 10 * 1000;
 			nanosleep(&ts, NULL);
 #endif
 		}
