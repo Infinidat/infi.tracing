@@ -49,13 +49,13 @@ if SETUP_INFO['url'] is None:
 
 def build_ext_modules():
     from platform import platform, system
-    extra_compile_args = ["-Wno-format-security"]
+    extra_compile_args = []
     extra_link_args = []
     if platform().startswith("Darwin-13"):
         extra_compile_args += ["-stdlib=libstdc++"]
         extra_link_args += ["-stdlib=libstdc++"]
     if system() in ["Linux", "Darwin"]:
-        extra_compile_args += ["-Wno-strict-prototypes"]
+        extra_compile_args += ["-Wno-format-security", "-Wno-strict-prototypes"]
         platform_specific_sources = ["src/mintsystem/gcc/datetime.c", "src/mintsystem/gcc/mutex.c",
                                      "src/mintsystem/gcc/semaphore.c", "src/mintsystem/gcc/timer.c"]
     else:

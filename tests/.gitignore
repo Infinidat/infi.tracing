@@ -9,3 +9,4 @@ test_syslog_trace_dump
 test_file_trace_dump
 test_trace_message
 test_trace_message_ring_buffer
+test_lru

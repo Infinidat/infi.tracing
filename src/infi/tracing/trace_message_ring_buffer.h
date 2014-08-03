@@ -188,11 +188,11 @@ public:
 
         // We assume not all producers managed to write to the entire buffer and wrap around to this space otherwise
         // we're shooting ourselves in the leg (see caveat).
-        lock_element(reserved_space, spinlock_consumer_wait_counter);
+        lock_element(reserved_space, spinlock_producer_wait_counter);
 
         // Check for overruns - if the slot has data it means the consumer didn't get to it which means an overrun
         // occurred.
-        if (has_data[reserved_space].test_and_set()) {
+        if (!has_data[reserved_space].test_and_set()) {
             overflow_counter.inc();
             resettable_overflow_counter.inc();
         }
@@ -201,7 +201,7 @@ public:
     }
 
     void commit_push(TraceMessage* element) {
-        busy[element - elements].clear();
+        unlock_element(element - elements);
     }
 
     // Pops a message from the queue and copies it to the buffer. Returns true if a message was copied and false there
@@ -209,7 +209,11 @@ public:
     bool pop(TraceMessage& message) {
         int i = tail;
 
-        lock_element(i, spinlock_producer_wait_counter);
+        if (!has_data[i].test()) {
+            return false;
+        }
+
+        lock_element(i, spinlock_consumer_wait_counter);
 
         bool has_data_for_element = has_data[i].test();
         if (has_data_for_element) {
@@ -243,7 +247,7 @@ public:
 private:
     inline void lock_element(int i, atomic_uint64& counter) {
         bool collision = false;
-        while (busy[i].test_and_set()) {
+        while (!busy[i].test_and_set()) {
             collision = true;
         }
         if (collision) {

@@ -2,14 +2,20 @@
 #define __trace_message_h__
 
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <algorithm>
 #include <cstring>
+#include <mintomic/platform_detect.h>
 
 #ifdef MINT_COMPILER_MSVC
-#include <winbase.h>
+#define NOMINMAX
+#include <windows.h>
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
 #else
+#include <stdint.h>
 #include <sys/time.h>
 #endif
 

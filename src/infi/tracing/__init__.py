@@ -56,12 +56,12 @@ def tracing_output_to_stderr():
     trace_dump = PyStderrTraceDump()
 
 
-def set_tracing(filter_func=_filter_all):
+def set_tracing(filter_func=_filter_all, trace_level_lru_capacity=256):
     global trace_dump
     from infi.tracing.ctracing import ctracing_set_profile
     if trace_dump:
         trace_dump.start()
-    ctracing_set_profile(filter_func)
+    ctracing_set_profile(filter_func, trace_level_lru_capacity)
 
 
 def unset_tracing():
@@ -75,13 +75,6 @@ def unset_tracing():
 def wait_and_ensure_exit(seconds=0, exit_code=10):
     from infi.tracing.ctracing import ctracing_wait_and_ensure_exit
     ctracing_wait_and_ensure_exit(seconds, exit_code)
-
-
-def set_func_cache_size(size):
-    """Sets the function LRU cache size. The cache is used to determine whether to trace a function or not to trace it,
-    and which level of tracing should be done."""
-    from infi.tracing.ctracing import ctracing_set_func_cache_size
-    ctracing_set_func_cache_size(size)
 
 
 def suspend_tracing():

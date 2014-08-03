@@ -1,6 +1,8 @@
 #ifndef __test_utils_h__
 #define __test_utils_h__
 
+#include <stdio.h>
+
 #define TEST(x) \
     if (!x()) { \
         fprintf(stderr, "test " #x " failed\n"); \
@@ -9,16 +11,21 @@
         printf("test " #x " passed.\n"); \
     }
 
-
 #define ASSERT(a) \
     if (!(a)) { \
-        fprintf(stderr, "assertion failed: " #a ", failing test.\n"); \
+        fprintf(stderr, "assertion failed at %s:%d: " #a ", failing test.\n", __FILE__, __LINE__); \
         return false; \
     }
 
 #define ASSERT_EQ(a, b) \
     if ((a) != (b)) { \
-        fprintf(stderr, "assertion failed: " #a " != " #b ", failing test.\n"); \
+        fprintf(stderr, "assertion failed at %s:%d: " #a " != " #b ", failing test.\n", __FILE__, __LINE__); \
+        return false; \
+    }
+
+#define FAIL(message) \
+    { \
+        fprintf(stderr, "test failed at %s:%d: " #message, __FILE__, __LINE__); \
         return false; \
     }
 

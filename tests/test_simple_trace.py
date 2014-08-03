@@ -37,6 +37,7 @@ def foo(n):
 def notrace_foo():
     foo(12)
 
+
 def nested_notrace_foo():
     foo(32)
 
@@ -56,24 +57,30 @@ def foo_with_exception():
     except:
         pass
 
+
 def func_with_arg(arg):
     pass
+
 
 def func_with_vargs(*vargs):
     pass
 
+
 def func_with_vkwargs(**kwargs):
     pass
+
 
 def func_with_vargs_and_vwkargs(*args, **kwargs):
     pass
 
+
 def func_with_args_and_vargs_and_vwkargs(arg1, arg2, *args, **kwargs):
     pass
 
+
 def trace_filter(frame):
     print("trace_filter {}".format(frame.f_code.co_name))
-    if frame.f_code.co_name  in ["foo", "bar"]:
+    if frame.f_code.co_name in ["foo", "bar"]:
         return TRACE_FUNC_NAME
     if frame.f_code.co_name == "notrace_foo":
         return NO_TRACE

@@ -151,7 +151,7 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         elif gstore != NULL:
             gstore.no_trace_from_depth = NO_TRACE_FROM_DEPTH_DISABLED
 
-    trace_level = find_trace_level_or_call_filter(frame, filter_func)
+    trace_level = find_trace_level_or_call_filter(frame, filter_func, &gstore.trace_level_lru)
 
     if trace_level == NO_TRACE:
         return 0
@@ -168,37 +168,23 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
     return 0
 
 
-def ctracing_set_profile(filter_func):
-    global pid, trace_level_func_cache, _PyGreenlet_API
-
-    init_thread_storage_once()
-    pid = <long> getpid()  # We set this once per process so we won't call this method on every trace.
-
-    cdef ThreadStorage* tstore
+def ctracing_set_profile(filter_func, trace_level_lru_capacity=1024):
+    global pid, _PyGreenlet_API
 
     if filter_func is None:
         raise ValueError("filter_func cannot be None")
 
+    init_thread_storage_once(trace_level_lru_capacity)
+    pid = <long> getpid()  # We set this once per process so we won't call this method on every trace.
+
+    cdef ThreadStorage* tstore
+
     PyGreenlet_Import()
-    if trace_level_func_cache == NULL:
-        ctracing_set_func_cache_size(DEFAULT_FUNC_CACHE_SIZE)
 
     if _PyGreenlet_API != NULL:
         PyEval_SetProfile(greenlet_trace_func, <PyObject*>filter_func)
     else:
         raise ValueError("tracing only supported with greenlets for now")
-
-
-def ctracing_set_func_cache_size(size):
-    global trace_level_func_cache
-    assert size >= 0
-
-    if trace_level_func_cache != NULL:
-        del trace_level_func_cache
-
-    trace_level_func_cache = new CodeLRUCache(size)
-    if trace_level_func_cache == NULL:
-        raise Exception("failed to create trace level func cache (size: {})".format(size))
 
 
 def ctracing_print_stats():

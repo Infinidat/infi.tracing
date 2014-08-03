@@ -4,6 +4,7 @@
 
 static pthread_key_t storage_key;
 static pthread_once_t storage_key_once = PTHREAD_ONCE_INIT;
+static size_t trace_level_lru_capacity = 256;
 
 void del_thread_storage(void* ptr) {
 	delete (ThreadStorage*) ptr;
@@ -17,7 +18,8 @@ void init_thread_storage() {
 	}
 }
 
-void init_thread_storage_once() {
+void init_thread_storage_once(size_t _trace_level_lru_capacity) {
+	trace_level_lru_capacity = _trace_level_lru_capacity;
 	(void) pthread_once(&storage_key_once, init_thread_storage);
 }
 
@@ -27,7 +29,7 @@ ThreadStorage* get_thread_storage() {
 	void* ptr = pthread_getspecific(storage_key);
 	pthread_t id = pthread_self();
 	if (ptr == NULL) {
-		ptr = (void*)new ThreadStorage((unsigned long) id);
+		ptr = (void*)new ThreadStorage((unsigned long) id, trace_level_lru_capacity);
 		(void) pthread_setspecific(storage_key, ptr);
 	}
 	return (ThreadStorage*) ptr;
