@@ -36,7 +36,7 @@ public:
         mint_store_32_relaxed(&val, _val);
     }
 
-    atomic_uint32 inc() {
+    uint32_t inc() {
         return mint_fetch_add_32_relaxed(&val, 1);
     }
 

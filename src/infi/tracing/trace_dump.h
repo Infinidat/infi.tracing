@@ -1,8 +1,7 @@
 #ifndef __trace_dump_h__
 #define __trace_dump_h__
 
-#include <netinet/in.h>
-
+#define NOMINMAX  // For windows.h not to define min() and max()
 #include <string>
 #include <mintsystem/thread.h>
 
@@ -69,6 +68,10 @@ private:
 	FILE* handle;
 	bool close_handle;
 };
+
+
+#ifndef MINT_COMPILER_MSVC
+#include <netinet/in.h>
 
 
 class SyslogSocket {
@@ -138,5 +141,6 @@ protected:
 
 	int format_message();
 };
+#endif // MINT_COMPILER_MSVC
 
 #endif
