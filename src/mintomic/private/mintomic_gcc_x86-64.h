@@ -74,7 +74,8 @@ MINT_C_INLINE uint32_t mint_compare_exchange_strong_32_relaxed(mint_atomic32_t *
     uint32_t original;
     asm volatile("lock; cmpxchgl %2, %1"
                  : "=a"(original), "+m"(object->_nonatomic)
-                 : "q"(desired), "0"(expected));
+                 : "q"(desired), "0"(expected)
+                 : "cc", "memory");
     return original;
 }
 
@@ -89,7 +90,8 @@ MINT_C_INLINE uint32_t mint_fetch_add_32_relaxed(mint_atomic32_t *object, int32_
     uint32_t original;
     asm volatile("lock; xaddl %0, %1"
                  : "=r"(original), "+m"(object->_nonatomic)
-                 : "0"(operand));
+                 : "0"(operand)
+                 : "cc", "memory");
     return original;
 }
 
@@ -105,7 +107,8 @@ MINT_C_INLINE uint32_t mint_fetch_and_32_relaxed(mint_atomic32_t *object, uint32
                  "       lock; cmpxchgl %2, %1\n"
                  "       jne     1b"
                  : "=&a"(original), "+m"(object->_nonatomic), "=&r"(temp)
-                 : "r"(operand));
+                 : "r"(operand)
+                 : "cc", "memory");
     return original;
 }
 
@@ -119,7 +122,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
                  "       lock; cmpxchgl %2, %1\n"
                  "       jne     1b"
                  : "=&a"(original), "+m"(object->_nonatomic), "=&r"(temp)
-                 : "r"(operand));
+                 : "r"(operand)
+                 : "cc", "memory");
     return original;
 }
 
@@ -148,7 +152,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         uint64_t original;
         asm volatile("lock; cmpxchgq %2, %1"
                      : "=a"(original), "+m"(object->_nonatomic)
-                     : "q"(desired), "0"(expected));
+                     : "q"(desired), "0"(expected)
+                     : "cc", "memory");
         return original;
     }
 
@@ -157,7 +162,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         uint64_t original;
         asm volatile("lock; xaddq %0, %1"
                      : "=r"(original), "+m"(object->_nonatomic)
-                     : "0"(operand));
+                     : "0"(operand)
+                     : "cc", "memory");
         return original;
     }
 
@@ -171,7 +177,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
                      "       lock; cmpxchgq %2, %1\n"
                      "       jne     1b"
                      : "=&a"(original), "+m"(object->_nonatomic), "=&r"(temp)
-                     : "r"(operand));
+                     : "r"(operand)
+                     : "cc", "memory");
         return original;
     }
 
@@ -185,7 +192,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
                      "       lock; cmpxchgq %2, %1\n"
                      "       jne     1b"
                      : "=&a"(original), "+m"(object->_nonatomic), "=&r"(temp)
-                     : "r"(operand));
+                     : "r"(operand)
+                     : "cc", "memory");
         return original;
     }
 
@@ -203,11 +211,14 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         // "m"(object->_nonatomic) loads object's address into a register, which becomes %1, before the block.
         // No other registers are modified.
         uint64_t original;
-        asm volatile("movl %%ebx, %%eax\n"
+        asm volatile("pushl %%ebx\n"
+                     "movl %%ebx, %%eax\n"
                      "movl %%ecx, %%edx\n"
-                     "lock; cmpxchg8b %1"
+                     "lock; cmpxchg8b %1\n"
+                     "popl %%ebx"
                      : "=&A"(original)
-                     : "m"(object->_nonatomic));
+                     : "m"(object->_nonatomic)
+                     : "cc", "memory");
         return original;
     }
 
@@ -223,10 +234,25 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         // "b" and "c" move desired to ECX:EBX before the block.
         // "A"(expected) loads the original value of object->_nonatomic into EAX:EDX before the block.
         uint64_t expected = object->_nonatomic;
+#ifndef __PIC__
         asm volatile("1:    cmpxchg8b %0\n"
                      "      jne 1b"
                      : "=m"(object->_nonatomic)
-                     : "b"((uint32_t) desired), "c"((uint32_t) (desired >> 32)), "A"(expected));
+                     : "b"((uint32_t) desired), "c"((uint32_t) (desired >> 32)), "A"(expected)
+                     : "cc", "memory");
+#else
+        // See http://www.cs.rochester.edu/~sandhya/csc258/assignments/proj2/atomic_ops.h
+        // %ebx is used oddly when compiling position independent code. All we do
+        // is manually save it.
+        asm volatile("   pushl %%ebx\n"
+                     "   movl %2, %%ebx\n"
+                     "1: cmpxchg8b %0\n"
+                     "   jne 1b\n"
+                     "   popl %%ebx"
+                     : "=m"(object->_nonatomic)
+                     : "A"(expected), "r"((uint32_t) desired), "c"((uint32_t) (desired >> 32))
+                     : "cc", "memory");
+#endif
     }
 
     MINT_C_INLINE uint64_t mint_compare_exchange_strong_64_relaxed(mint_atomic64_t *object, uint64_t expected, uint64_t desired)
@@ -237,9 +263,23 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         // "b" and "c" move desired to ECX:EBX before the block.
         // "0"(expected) puts expected in the same registers as "=a"(original), which are EAX:EDX, before the block.
         uint64_t original;
+#ifndef __PIC__
         asm volatile("lock; cmpxchg8b %1"
                      : "=A"(original), "+m"(object->_nonatomic)
-                     : "b"((uint32_t) desired), "c"((uint32_t) (desired >> 32)), "0"(expected));
+                     : "b"((uint32_t) desired), "c"((uint32_t) (desired >> 32)), "0"(expected)
+                     : "cc", "memory");
+#else
+        // See http://www.cs.rochester.edu/~sandhya/csc258/assignments/proj2/atomic_ops.h
+        // %ebx is used oddly when compiling position independent code. All we do
+        // is manually save it.
+        asm volatile("pushl %%ebx\n"           // Save %ebx on the stack
+                     "movl %3, %%ebx\n"        // Move the proper value into %ebx
+                     "lock; cmpxchg8b %1\n"    // Perform the exchange
+                     "popl %%ebx"              // Restore %ebx
+                     : "=A"(original), "+m"(object->_nonatomic)
+                     : "0"(expected), "r"((uint32_t) desired), "c"((uint32_t) (desired >> 32))
+                     : "cc", "memory");
+#endif
         return original;
     }
 
