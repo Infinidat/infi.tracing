@@ -10,8 +10,10 @@ machine = platform.machine()
 python_major_ver, python_minor_ver, _ = platform.python_version_tuple()
 ver = "{}.{}".format(python_major_ver, python_minor_ver)
 
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
+import glob
+lib_path = glob.glob(os.path.join(os.path.dirname(__file__), "..", "build", "lib.*"))[0]
+sys.path.insert(0, lib_path)
+sys.path.insert(0, os.path.dirname(__file__))
 
 from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_file, NO_TRACE, NO_TRACE_NESTED,
                           TRACE_FUNC_NAME, TRACE_FUNC_PRIMITIVES)
@@ -94,6 +96,7 @@ def trace_filter(frame):
 
 
 log_file = tempfile.mktemp()
+print("temporary log file: {}".format(log_file))
 tracing_output_to_file(log_file)
 expected_output = []
 set_tracing(trace_filter)

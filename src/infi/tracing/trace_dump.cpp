@@ -1,14 +1,12 @@
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <syslog.h>
 #include <stdio.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-
 #include <cstring>
 
 #include "trace_dump.h"
+
+#ifndef MINT_COMPILER_MSVC
+#include <unistd.h>
+#endif
 
 using namespace std;
 
@@ -69,7 +67,12 @@ void TraceDump::process_overflow(unsigned long messages_lost) {
 	message_buffer.recycle();
 	message_buffer.set_timestamp();
 	message_buffer.set_severity(4);  // LOG_WARN in syslog - other writers may override this method.
-	message_buffer.printf("pid %ld lost %ld messages due to overflow", getpid(), messages_lost);
+#ifdef MINT_COMPILER_MSVC
+	long pid = static_cast<long>(GetCurrentProcessId());
+#else
+	long pid = getpid();
+#endif
+	message_buffer.printf("pid %ld lost %ld messages due to overflow", pid, messages_lost);
 	process();
 }
 
@@ -106,6 +109,12 @@ void FileTraceDump::stop() {
 		handle = NULL;
 	}
 }
+
+#ifndef MINT_COMPILER_MSVC
+#include <syslog.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <arpa/inet.h>
 
 SyslogSocket::SyslogSocket() : fd(-1) {
 }
@@ -296,3 +305,4 @@ int SyslogTraceDump::format_message() {
 
 	return -1;
 }
+#endif // MINT_COMPILER_MSVC
