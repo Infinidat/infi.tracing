@@ -1,4 +1,11 @@
 #include <string>
+#include "mintomic/platform_detect.h"
+#ifdef MINT_COMPILER_GCC
+#include <unistd.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include "trace_message_ring_buffer.h"
 #include "test_utils.h"
 #include "mintsystem/thread.h"
@@ -99,6 +106,11 @@ bool test_concurrency_single_producer_single_consumer() {
 		m->printf("%d", i);
 		m->set_timestamp();
 		ring_buffer.commit_push(m);
+#ifdef MINT_COMPILER_GCC
+		usleep(1);
+#else
+		Sleep(1);
+#endif
 	}
 
 	void* rv;
@@ -137,6 +149,11 @@ void* _producer(void* arg) {
 		m->printf("%d", i);
 		m->set_timestamp();
 		ring_buffer->commit_push(m);
+#ifdef MINT_COMPILER_GCC
+		usleep(1);
+#else
+		Sleep(1);
+#endif
 	}
 	return NULL;
 }
