@@ -78,6 +78,8 @@ def trace_filter(frame):
     print("trace_filter {}".format(frame.f_code.co_name))
     if frame.f_code.co_name == 'compile':  # our test's re.compile...
         return NO_TRACE_NESTED
+    if frame.f_globals['__name__'] == 'StringIO':  # nose tests / infi.traceback extensions
+        return NO_TRACE_NESTED
     if frame.f_code.co_name in ["foo", "bar"]:
         return TRACE_FUNC_NAME
     if frame.f_code.co_name == "notrace_foo":
@@ -87,215 +89,219 @@ def trace_filter(frame):
     return TRACE_FUNC_PRIMITIVES
 
 
-log_file = tempfile.mktemp()
-print("temporary log file: {}".format(log_file))
-tracing_output_to_file(log_file)
-expected_output = []
-set_tracing(trace_filter)
-expected_output.append(("<", "infi.tracing", "set_tracing,None"))
+def test_file_trace():
+    log_file = tempfile.mktemp()
+    print("temporary log file: {}".format(log_file))
+    tracing_output_to_file(log_file)
+    expected_output = []
+    set_tracing(trace_filter)
+    expected_output.append(("<", "infi.tracing", "set_tracing,None"))
 
-foo(42)
-expected_output.extend([
-    (">", "__main__", "foo"),
-    (">", "__main__", "bar"),
-    ("<", "__main__", "bar"),
-    ("<", "__main__", "foo"),
-])
+    foo(42)
+    module = re.compile('^(__main__|test_file_trace)$')
 
-notrace_foo()
-expected_output.extend([  # notrace_foo not traced
-    (">", "__main__", "foo"),
-    (">", "__main__", "bar"),
-    ("<", "__main__", "bar"),
-    ("<", "__main__", "foo"),
-])
+    expected_output.extend([
+        (">", module, "foo"),
+        (">", module, "bar"),
+        ("<", module, "bar"),
+        ("<", module, "foo"),
+    ])
 
-nested_notrace_foo()
+    notrace_foo()
+    expected_output.extend([  # notrace_foo not traced
+        (">", module, "foo"),
+        (">", module, "bar"),
+        ("<", module, "bar"),
+        ("<", module, "foo"),
+    ])
 
-foo(17)
-expected_output.extend([
-    (">", "__main__", "foo"),
-    (">", "__main__", "bar"),
-    ("<", "__main__", "bar"),
-    ("<", "__main__", "foo"),
-])
+    nested_notrace_foo()
 
-foo_with_exception()
-expected_output.extend([
-    (">", "__main__", "foo_with_exception"),
-    (">", "__main__", "bar_with_exception"),
-    (">", "__main__", "kar_exception"),
-    ("<", "__main__", "kar_exception,exc"),
-    ("<", "__main__", "bar_with_exception,exc"),
-    ("<", "__main__", "foo_with_exception,None"),
-])
+    foo(17)
+    expected_output.extend([
+        (">", module, "foo"),
+        (">", module, "bar"),
+        ("<", module, "bar"),
+        ("<", module, "foo"),
+    ])
 
-func_with_arg(1)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,1"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(None)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,None"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(True)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,True"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(False)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,False"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg("this is a string")
-expected_output.extend([
-    (">", "__main__", "func_with_arg,'this is a string'"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(3.1415)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,3.1415f"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(10**50)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,100000000000000000000000000000000000000000000000000"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(["this", "is", "list", 42])
-expected_output.extend([
-    (">", "__main__", "func_with_arg,['this','is','list',42]"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg({1: 'str_val', 'str_key': None})
-expected_output.extend([
-    (">", "__main__", "func_with_arg,{1:'str_val','str_key':None}"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg('this is a long key that should be truncated ' * 10)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,'this is a long key that should be truncated this is a long key t'... <len=440>"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg({'this is a long key that should be truncated ' * 10: 123})
-expected_output.extend([
-    (">", "__main__", "func_with_arg,{'this is a long k'... <len=440>:123}"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_vargs(1, 2)
-expected_output.extend([
-    (">", "__main__", "func_with_vargs,vargs=(1,2)"),
-    ("<", "__main__", "func_with_vargs,None")
-])
-func_with_vkwargs(a=1, b=2)
-expected_output.extend([
-    (">", "__main__", "func_with_vkwargs,kwargs={'a':1,'b':2}"),
-    ("<", "__main__", "func_with_vkwargs,None")
-])
-func_with_vargs_and_vwkargs(1, 2)
-expected_output.extend([
-    (">", "__main__", "func_with_vargs_and_vwkargs,vargs=(1,2),kwargs={}"),
-    ("<", "__main__", "func_with_vargs_and_vwkargs,None")
-])
-func_with_vargs_and_vwkargs(a=1, b=2)
-expected_output.extend([
-    (">", "__main__", "func_with_vargs_and_vwkargs,vargs=(),kwargs={'a':1,'b':2}"),
-    ("<", "__main__", "func_with_vargs_and_vwkargs,None")
-])
-func_with_vargs_and_vwkargs(1, 2, a=1, b=2)
-expected_output.extend([
-    (">", "__main__", "func_with_vargs_and_vwkargs,vargs=(1,2),kwargs={'a':1,'b':2}"),
-    ("<", "__main__", "func_with_vargs_and_vwkargs,None")
-])
-func_with_args_and_vargs_and_vwkargs('a', 'b', 1, 2, a=1, b=2)
-expected_output.extend([
-    (">", "__main__", "func_with_args_and_vargs_and_vwkargs,'a','b',vargs=(1,2),kwargs={'a':1,'b':2}"),
-    ("<", "__main__", "func_with_args_and_vargs_and_vwkargs,None")
-])
-f = Foo()
-expected_output.extend([
-    (">", "__main__", re.compile("__init__,<Foo 0x.*>")),
-    ("<", "__main__", "__init__,None")
-])
-f.foo()
-expected_output.extend([
-    (">", "__main__", "foo"),
-    ("<", "__main__", "foo")
-])
-func_with_arg(f)
-expected_output.extend([
-    (">", "__main__", re.compile("func_with_arg,<Foo 0x.*>")),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(f.foo)
-expected_output.extend([
-    (">", "__main__", re.compile("func_with_arg,<meth foo cls Foo obj 0x.*>")),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(Foo.foo)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,<meth foo cls Foo>"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(Foo)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,<type Foo>"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg(foo)
-expected_output.extend([
-    (">", "__main__", "func_with_arg,<func foo>"),
-    ("<", "__main__", "func_with_arg,None")
-])
-func_with_arg((f.this_is_a_very_long_method_name_so_it_should_get_truncated_somehow, func_with_vkwargs))
-expected_output.extend([
-    (">", "__main__", "func_with_arg,(<meth ?>,<func func_with_vkwargs>)"),
-    ("<", "__main__", "func_with_arg,None")
-])
+    foo_with_exception()
+    expected_output.extend([
+        (">", module, "foo_with_exception"),
+        (">", module, "bar_with_exception"),
+        (">", module, "kar_exception"),
+        ("<", module, "kar_exception,exc"),
+        ("<", module, "bar_with_exception,exc"),
+        ("<", module, "foo_with_exception,None"),
+    ])
 
-unset_tracing()
-expected_output.append((">", "infi.tracing", "unset_tracing"))
+    func_with_arg(1)
+    expected_output.extend([
+        (">", module, "func_with_arg,1"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(None)
+    expected_output.extend([
+        (">", module, "func_with_arg,None"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(True)
+    expected_output.extend([
+        (">", module, "func_with_arg,True"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(False)
+    expected_output.extend([
+        (">", module, "func_with_arg,False"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg("this is a string")
+    expected_output.extend([
+        (">", module, "func_with_arg,'this is a string'"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(3.1415)
+    expected_output.extend([
+        (">", module, "func_with_arg,3.1415f"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(10**50)
+    expected_output.extend([
+        (">", module, "func_with_arg,100000000000000000000000000000000000000000000000000"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(["this", "is", "list", 42])
+    expected_output.extend([
+        (">", module, "func_with_arg,['this','is','list',42]"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg({1: 'str_val', 'str_key': None})
+    expected_output.extend([
+        (">", module, "func_with_arg,{1:'str_val','str_key':None}"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg('this is a long key that should be truncated ' * 10)
+    expected_output.extend([
+        (">", module, "func_with_arg,'this is a long key that should be truncated this is a long key t'... <len=440>"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg({'this is a long key that should be truncated ' * 10: 123})
+    expected_output.extend([
+        (">", module, "func_with_arg,{'this is a long k'... <len=440>:123}"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_vargs(1, 2)
+    expected_output.extend([
+        (">", module, "func_with_vargs,vargs=(1,2)"),
+        ("<", module, "func_with_vargs,None")
+    ])
+    func_with_vkwargs(a=1, b=2)
+    expected_output.extend([
+        (">", module, "func_with_vkwargs,kwargs={'a':1,'b':2}"),
+        ("<", module, "func_with_vkwargs,None")
+    ])
+    func_with_vargs_and_vwkargs(1, 2)
+    expected_output.extend([
+        (">", module, "func_with_vargs_and_vwkargs,vargs=(1,2),kwargs={}"),
+        ("<", module, "func_with_vargs_and_vwkargs,None")
+    ])
+    func_with_vargs_and_vwkargs(a=1, b=2)
+    expected_output.extend([
+        (">", module, "func_with_vargs_and_vwkargs,vargs=(),kwargs={'a':1,'b':2}"),
+        ("<", module, "func_with_vargs_and_vwkargs,None")
+    ])
+    func_with_vargs_and_vwkargs(1, 2, a=1, b=2)
+    expected_output.extend([
+        (">", module, "func_with_vargs_and_vwkargs,vargs=(1,2),kwargs={'a':1,'b':2}"),
+        ("<", module, "func_with_vargs_and_vwkargs,None")
+    ])
+    func_with_args_and_vargs_and_vwkargs('a', 'b', 1, 2, a=1, b=2)
+    expected_output.extend([
+        (">", module, "func_with_args_and_vargs_and_vwkargs,'a','b',vargs=(1,2),kwargs={'a':1,'b':2}"),
+        ("<", module, "func_with_args_and_vargs_and_vwkargs,None")
+    ])
+    f = Foo()
+    expected_output.extend([
+        (">", module, re.compile("__init__,<Foo 0x.*>")),
+        ("<", module, "__init__,None")
+    ])
+    f.foo()
+    expected_output.extend([
+        (">", module, "foo"),
+        ("<", module, "foo")
+    ])
+    func_with_arg(f)
+    expected_output.extend([
+        (">", module, re.compile("func_with_arg,<Foo 0x.*>")),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(f.foo)
+    expected_output.extend([
+        (">", module, re.compile("func_with_arg,<meth foo cls Foo obj 0x.*>")),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(Foo.foo)
+    expected_output.extend([
+        (">", module, "func_with_arg,<meth foo cls Foo>"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(Foo)
+    expected_output.extend([
+        (">", module, "func_with_arg,<type Foo>"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg(foo)
+    expected_output.extend([
+        (">", module, "func_with_arg,<func foo>"),
+        ("<", module, "func_with_arg,None")
+    ])
+    func_with_arg((f.this_is_a_very_long_method_name_so_it_should_get_truncated_somehow, func_with_vkwargs))
+    expected_output.extend([
+        (">", module, "func_with_arg,(<meth ?>,<func func_with_vkwargs>)"),
+        ("<", module, "func_with_arg,None")
+    ])
 
-from infi.tracing.ctracing import ctracing_print_stats
-ctracing_print_stats()
+    unset_tracing()
+    expected_output.append((">", "infi.tracing", "unset_tracing"))
 
-with open(log_file, "rb") as f:
-    lines = f.readlines()
+    from infi.tracing.ctracing import ctracing_print_stats
+    ctracing_print_stats()
 
-has_overflows = False
+    with open(log_file, "rb") as f:
+        lines = f.readlines()
 
+    has_overflows = False
 
-def is_overflow(l):
-    global has_overflows
-    if "messages due to overflow" in l:
-        has_overflows = True
-        return True
-    return False
-lines = [l.strip() for l in lines if not is_overflow(l)]
+    def is_overflow(l):
+        global has_overflows
+        if "messages due to overflow" in l:
+            has_overflows = True
+            return True
+        return False
+    lines = [l.strip() for l in lines if not is_overflow(l)]
 
+    def compare_lines(expected, actual, received):
+        for expected_e, actual_e in zip(expected, actual):
+            if isinstance(expected_e, (unicode, str)):
+                if expected_e != actual_e:
+                    raise AssertionError("expected {!r} but got {!r} ({!r})".format(expected_e, actual_e, received))
+            elif not expected_e.match(actual_e):
+                raise AssertionError("expected {} but got {!r} ({!r})".format(expected_e, actual_e, received))
 
-def compare_lines(expected, actual, received):
-    for expected_e, actual_e in zip(expected, actual):
-        if isinstance(expected_e, (unicode, str)):
-            if expected_e != actual_e:
-                raise AssertionError("expected {!r} but got {!r} ({!r})".format(expected_e, actual_e, received))
-        elif not expected_e.match(actual_e):
-            raise AssertionError("expected {} but got {!r} ({!r})".format(expected_e, actual_e, received))
+    from itertools import izip
+    for expected, received in izip(expected_output, lines):
+        try:
+            d, _, _, mod, func_w_args = received.split(",", 4)
+        except ValueError:
+            raise AssertionError("got {!r} not conforming to line format".format(received))
+        actual = (d, mod, func_w_args)
+        compare_lines(expected, actual, received)
 
-from itertools import izip
-for expected, received in izip(expected_output, lines):
-    try:
-        d, _, _, mod, func_w_args = received.split(",", 4)
-    except ValueError:
-        raise AssertionError("got {!r} not conforming to line format".format(received))
-    actual = (d, mod, func_w_args)
-    compare_lines(expected, actual, received)
+    if len(expected_output) != len(lines):
+        raise AssertionError("expected output length {} != actual length {}".format(len(expected_output), len(lines)))
 
-if len(expected_output) != len(lines):
-    raise AssertionError("expected output length {} != actual length {}".format(len(expected_output), len(lines)))
+    if has_overflows:
+        raise AssertionError("found overflows")
 
-if has_overflows:
-    raise AssertionError("found overflows")
+if __name__ == '__main__':
+    test_file_trace()
