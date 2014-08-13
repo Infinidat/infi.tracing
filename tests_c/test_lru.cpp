@@ -1,5 +1,6 @@
 #include "lru.hpp"
 #include "test_utils.h"
+#include "mintomic/platform_detect.h"
 #include <stdlib.h>
 
 bool test_alloc_dealloc() {
@@ -92,10 +93,40 @@ bool test_lru__random() {
     return true;
 }
 
+#ifdef MINT_COMPILER_GCC
+#include <sys/time.h>
+#include <sys/resource.h>
+
+bool test_lru__no_leak() {
+    srandom(0);
+    struct rusage base_rusage;
+    getrusage(RUSAGE_SELF, &base_rusage);
+    for (int i = 0; i < 1024; ++i) {
+        LRU lru(4096);
+        for (int j = 0; j < 16384; ++j) {
+            lru.insert(j, 1);
+            lru.find(j - 1);
+        }
+    }
+    struct rusage cur_rusage;
+    getrusage(RUSAGE_SELF, &cur_rusage);
+    if (base_rusage.ru_maxrss != cur_rusage.ru_maxrss) {
+        fprintf(stderr, "suspected memory leak, base=%lu cur=%lu\n", base_rusage.ru_maxrss, cur_rusage.ru_maxrss);
+        return false;
+    } else {
+        printf("base RSS %lu, cur RSS %lu\n", base_rusage.ru_maxrss, cur_rusage.ru_maxrss);
+    }
+    return true;
+}
+#endif
+
 MAIN_TEST_CASE_BEGIN
     TEST(test_alloc_dealloc);
     TEST(test_lru__single_elem);
     TEST(test_lru__eviction_policy);
     TEST(test_lru__eviction_policy_big);
     TEST(test_lru__random);
+#ifdef MINT_COMPILER_GCC
+    TEST(test_lru__no_leak);
+#endif
 MAIN_TEST_CASE_END

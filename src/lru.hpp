@@ -18,6 +18,13 @@ public:
 	}
 
 	~LRU() {
+		// We have to iterate the entire hash table and "delete" each element so uthash will delete all its internal
+		// records when we delete the "final" entry.
+		entry_ptr entry = NULL;
+		entry_ptr tmp_entry = NULL;
+		HASH_ITER(hh, hash_handle, entry, tmp_entry) {
+			HASH_DEL(hash_handle, entry);
+		}
 		delete[] entries;
 	}
 
@@ -28,10 +35,9 @@ public:
 
 		if (used_size >= capacity) {
 			HASH_ITER(hh, hash_handle, entry, tmp_entry) {
-				HASH_DELETE(hh, hash_handle, entry);
+				HASH_DEL(hash_handle, entry);
 				break;
 			}
-			used_size--;
 		} else {
 			// Since we don't support the delete operation it makes it easy for us to choose a vacant entry - it will
 			// be the next available entry in the array. Once the array gets filled this branch will never get executed.
@@ -50,7 +56,7 @@ public:
 			return LRU_NOT_FOUND;
 		}
 		// Re-insert the element back to the hash so it'll be the most recently used.
-		HASH_DELETE(hh, hash_handle, elem);
+		HASH_DEL(hash_handle, elem);
 		HASH_ADD_INT(hash_handle, k, elem);
 		return elem->v;
 	}
