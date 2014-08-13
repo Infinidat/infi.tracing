@@ -112,7 +112,7 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
     cdef:
         int trace_level = NO_TRACE
         unsigned long tid
-        long gid, depth, no_trace_from_depth
+        long depth
         ThreadStorage* tstore
         GreenletStorage* gstore = NULL
 
@@ -123,47 +123,34 @@ cdef int greenlet_trace_func(PyObject* filter_func, PyFrameObject* frame, int wh
         gstore = get_gstore_on_call(tstore, frame)
         inc(gstore.depth)
         depth = gstore.depth
-        no_trace_from_depth = gstore.no_trace_from_depth
-        gid = gstore.gid
     elif what == PyTrace_RETURN:
         gstore = get_gstore_on_return(tstore, frame)
         depth = gstore.depth
-        no_trace_from_depth = gstore.no_trace_from_depth
-        gid = gstore.gid
-
-        if frame.f_back == NULL:
-            tstore.del_gstorage(gstore)
-            gstore = NULL
-        else:
-            dec(gstore.depth)
+        dec(gstore.depth)
     else:
         # We don't trace through C calls, so we don't check the following:
         # PyTrace_C_CALL, PyTrace_C_EXCEPTION, PyTrace_C_RETURN
         # Also, PyTrace_EXCEPTION cannot happen with a profile function.
         return 0
 
-    if tstore.enabled <= 0:
-        return 0
+    if tstore.enabled > 0:
+        # No need to check if no_trace_from_depth is NO_TRACE_FROM_DEPTH_DISABLED since the constant is always
+        # bigger than depth.
+        gid = gstore.gid
+        if depth <= gstore.no_trace_from_depth: # or no_trace_from_depth == NO_TRACE_FROM_DEPTH_DISABLED:
+            gstore.no_trace_from_depth = NO_TRACE_FROM_DEPTH_DISABLED  # reset it back in case it's not disabled
+            trace_level = find_trace_level_or_call_filter(frame, filter_func, &gstore.trace_level_lru)
 
-    if no_trace_from_depth != NO_TRACE_FROM_DEPTH_DISABLED:
-        if no_trace_from_depth < depth:
-            return 0
-        elif gstore != NULL:
-            gstore.no_trace_from_depth = NO_TRACE_FROM_DEPTH_DISABLED
+            if trace_level == NO_TRACE_NESTED:
+                gstore.no_trace_from_depth = depth
+            elif trace_level != NO_TRACE:
+                if what == PyTrace_CALL:
+                    log_call(trace_level, tid, gstore.gid, depth, frame, arg)
+                else:
+                    log_return(trace_level, tid, gstore.gid, depth, frame, arg)
 
-    trace_level = find_trace_level_or_call_filter(frame, filter_func, &gstore.trace_level_lru)
-
-    if trace_level == NO_TRACE:
-        return 0
-    elif trace_level == NO_TRACE_NESTED:
-        if gstore != NULL:
-            gstore.no_trace_from_depth = depth
-        return 0
-
-    if what == PyTrace_CALL:
-        log_call(trace_level, tid, gid, depth, frame, arg)
-    else:
-        log_return(trace_level, tid, gid, depth, frame, arg)
+    if what == PyTrace_RETURN and frame.f_back == NULL:
+        tstore.del_gstorage(gstore)
 
     return 0
 

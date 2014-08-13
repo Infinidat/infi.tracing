@@ -12,8 +12,8 @@ cdef inline int call_filter_and_store_trace_level(PyObject* filter_func, PyFrame
     if trace_level_result is None:
         # TODO this is an error and we should log it.
         import sys
-        sys.stderr.write("infi.tracing: filter returned None for frame: {} (filter: {})".format(<object>frame.f_code,
-                                                                                                <object>filter_func))
+        sys.stderr.write("infi.tracing: filter returned None for frame: {} (filter: {})\n".format(<object>frame.f_code,
+                                                                                                  <object>filter_func))
         trace_level_result = NO_TRACE
     trace_level = int(trace_level_result)
     trace_level_lru.insert(<long>frame.f_code, trace_level_result)
