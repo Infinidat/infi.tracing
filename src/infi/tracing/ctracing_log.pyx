@@ -68,7 +68,7 @@ cdef void log_return(int trace_level, long tid, long gid, long depth, PyFrameObj
     cdef PyObject* exc_value = frame.f_tstate.exc_value
 
     if trace_message == NULL:
-        return        
+        return
 
     try:
         if not serialize_prefix('<', tid, gid, depth, frame, trace_message):

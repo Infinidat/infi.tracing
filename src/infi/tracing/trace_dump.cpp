@@ -103,8 +103,8 @@ void FileTraceDump::flush() {
 
 void FileTraceDump::stop() {
 	shutdown_thread();
-	process_remaining();
 	if (close_handle && handle != NULL) {
+		process_remaining();
 		fclose(handle);
 		handle = NULL;
 	}
@@ -226,14 +226,14 @@ SyslogTraceDump::SyslogTraceDump(TraceMessageRingBuffer* _ring_buffer, const cha
 }
 
 SyslogTraceDump::~SyslogTraceDump() {
-	delete[] syslog_buffer;
 	stop();
+	delete[] syslog_buffer;
 }
 
 void SyslogTraceDump::stop() {
 	shutdown_thread();
-	process_remaining();
 	if (socket != NULL) {
+		process_remaining();
 		socket->close();
 		delete socket;
 		socket = NULL;

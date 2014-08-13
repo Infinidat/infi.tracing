@@ -16,6 +16,8 @@ message(CTRACING_LIB_PATH: ${CTRACING_LIB_PATH})
 include_directories(../src)
 include_directories(../src/infi/tracing)
 link_directories(${CTRACING_LIB_PATH})
+get_filename_component(PYTHON_LIB_PATH ../parts/python/lib ABSOLUTE)
+link_directories(${PYTHON_LIB_PATH})
 
 function(add_test test)
 	add_executable(${test} ${test}.cpp)
