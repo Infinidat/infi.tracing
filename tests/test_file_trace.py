@@ -3,13 +3,6 @@ import os
 import re
 import tempfile
 
-import platform
-
-os_name = platform.uname()[0].lower()
-machine = platform.machine()
-python_major_ver, python_minor_ver, _ = platform.python_version_tuple()
-ver = "{}.{}".format(python_major_ver, python_minor_ver)
-
 import glob
 lib_path = glob.glob(os.path.join(os.path.dirname(__file__), "..", "build", "lib.*"))[0]
 sys.path.insert(0, lib_path)

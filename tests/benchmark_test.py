@@ -2,23 +2,18 @@ import sys
 import os
 from time import time
 
-import platform
+import glob
+lib_path = glob.glob(os.path.join(os.path.dirname(__file__), "..", "build", "lib.*"))[0]
+sys.path.insert(0, lib_path)
+sys.path.insert(0, os.path.dirname(__file__))
 
-os_name = platform.uname()[0].lower()
-machine = platform.machine()
-python_major_ver, python_minor_ver, _ = platform.python_version_tuple()
-ver = "{}.{}".format(python_major_ver, python_minor_ver)
-
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog, tracing_output_to_file,
+from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog,  # tracing_output_to_file,
                           TRACE_FUNC_PRIMITIVES)
 from syslog import LOG_LOCAL0
 
 SAMPLES = 5
 CUT_OFF_TIME = 5.0
+
 
 def print_samples(label, samples, baseline_avg=None):
     avg = sum(samples) / len(samples)
@@ -29,7 +24,6 @@ def print_samples(label, samples, baseline_avg=None):
            "max/avg d {:5.2f}%".format(100.0 * (max_sample - avg) / avg)]
     if baseline_avg is not None:
         buf.append("({:.2f} times slower than baseline)".format(baseline_avg / avg))
-    
     print("  {}".format(" ".join(buf)))
 
 
@@ -41,9 +35,10 @@ def benchmark(samples, func):
         func()
         iters += 1
         now = time()
-    iters_per_sec = float(iters)  / float(now - start)
+    iters_per_sec = float(iters) / float(now - start)
     samples.append(iters_per_sec)
     print("sample result (iters/sec): {:.2f}".format(iters_per_sec))
+
 
 def bar():
     pass
