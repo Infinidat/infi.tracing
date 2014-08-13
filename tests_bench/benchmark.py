@@ -1,15 +1,14 @@
 import sys
 import os
-from time import time
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tests"))
+from utils import add_infi_tracing_to_sys_path
+add_infi_tracing_to_sys_path()
 
-import glob
-lib_path = glob.glob(os.path.join(os.path.dirname(__file__), "..", "build", "lib.*"))[0]
-sys.path.insert(0, lib_path)
-sys.path.insert(0, os.path.dirname(__file__))
 
 from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_syslog,  # tracing_output_to_file,
                           TRACE_FUNC_PRIMITIVES)
 from syslog import LOG_LOCAL0
+from time import time
 
 SAMPLES = 5
 CUT_OFF_TIME = 5.0
@@ -59,7 +58,6 @@ def trace_filter(frame):
 
 
 tracing_output_to_syslog(LOG_LOCAL0, application_name="benchmark")
-# tracing_output_to_file("/tmp/trace.log")
 set_tracing(trace_filter)
 
 p_samples = []

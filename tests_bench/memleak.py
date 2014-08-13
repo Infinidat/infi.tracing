@@ -1,15 +1,9 @@
 import sys
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tests"))
+from utils import add_infi_tracing_to_sys_path
+add_infi_tracing_to_sys_path()
 
-import platform
-
-os_name = platform.uname()[0].lower()
-machine = platform.machine()
-python_major_ver, python_minor_ver, _ = platform.python_version_tuple()
-ver = "{}.{}".format(python_major_ver, python_minor_ver)
-
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build", "lib.{}-{}-{}".format(os_name, machine, ver)))
 
 import resource
 from time import time
@@ -49,7 +43,6 @@ def teardown_tracing():
 
 
 def run():
-    import gevent
     foo()
     foo_with_arg(1)
     foo_with_arg([1, 2, 3])
@@ -60,8 +53,9 @@ def run():
 
     foo_with_arg(func)
 
-    g = gevent.spawn(foo)
-    g.join()
+    import greenlet
+    g = greenlet.greenlet(foo)
+    g.switch()
 
 
 def main():
@@ -83,4 +77,7 @@ def main():
     teardown_tracing()
 
 if __name__ == "__main__":
-    main()
+    if sys.platform != 'win32':
+        main()
+    else:
+        print("skipping on win32 platform.")

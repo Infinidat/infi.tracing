@@ -1,13 +1,12 @@
 import sys
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from utils import add_infi_tracing_to_sys_path
+add_infi_tracing_to_sys_path()
+
+
 import re
 import tempfile
-
-import glob
-lib_path = glob.glob(os.path.join(os.path.dirname(__file__), "..", "build", "lib.*"))[0]
-sys.path.insert(0, lib_path)
-sys.path.insert(0, os.path.dirname(__file__))
-
 from infi.tracing import (set_tracing, unset_tracing, tracing_output_to_file, NO_TRACE, NO_TRACE_NESTED,
                           TRACE_FUNC_NAME, TRACE_FUNC_PRIMITIVES)
 
