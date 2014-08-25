@@ -94,7 +94,20 @@ FileTraceDump::~FileTraceDump() {
 }
 
 void FileTraceDump::process() {
-	fprintf(handle, "%s\n", message_buffer.get_buffer());
+	uint64_t ts = message_buffer.get_timestamp();
+	time_t t = static_cast<time_t>(ts / 1000);
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+	char iso_time[128];
+	int l = sprintf(iso_time, "%04d-%02d-%02dT%02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+				    tm.tm_hour, tm.tm_min, tm.tm_sec);
+	int frac = static_cast<int>(ts % 1000);
+	if (frac != 0) {
+		l += sprintf(&iso_time[l], ".%06d", frac); // rsyslog doesn't handle ',' as the frac sep well
+	}
+
+	fprintf(handle, "%sZ\t%s\n", iso_time, message_buffer.get_buffer());
 }
 
 void FileTraceDump::flush() {
