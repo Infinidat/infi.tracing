@@ -278,8 +278,7 @@ def test_file_trace():
             has_overflows = True
             return True
         return False
-    lines = [l.strip() for l in lines if not is_overflow(l)]
-
+    lines = [l.strip()[28:] for l in lines if not is_overflow(l)]  # first characters are timestamp
     def compare_lines(expected, actual, received):
         for expected_e, actual_e in zip(expected, actual):
             if isinstance(expected_e, (unicode, str)):
