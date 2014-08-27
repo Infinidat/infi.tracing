@@ -94,6 +94,10 @@ FileTraceDump::~FileTraceDump() {
 }
 
 void FileTraceDump::process() {
+#ifdef MINT_COMPILER_MSVC
+	// TODO convert timestamp to iso_time on windows
+	fprintf(handle, "%s\n", message_buffer.get_buffer());
+#else
 	uint64_t ts = message_buffer.get_timestamp();
 	time_t t = static_cast<time_t>(ts / 1000);
 	struct tm tm;
@@ -108,6 +112,7 @@ void FileTraceDump::process() {
 	}
 
 	fprintf(handle, "%sZ\t%s\n", iso_time, message_buffer.get_buffer());
+#endif
 }
 
 void FileTraceDump::flush() {
