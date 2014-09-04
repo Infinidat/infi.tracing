@@ -101,7 +101,12 @@ void FileTraceDump::process() {
 	uint64_t ts = message_buffer.get_timestamp();
 	time_t t = static_cast<time_t>(ts / 1000);
 	struct tm tm;
+
+#ifdef MINT_COMPILER_MSVC
+	gmtime_s(&tm, &t);
+#else
 	gmtime_r(&t, &tm);
+#endif
 
 	char iso_time[128];
 	int l = sprintf(iso_time, "%04d-%02d-%02dT%02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
