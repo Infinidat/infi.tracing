@@ -245,8 +245,8 @@ MINT_C_INLINE uint32_t mint_fetch_or_32_relaxed(mint_atomic32_t *object, uint32_
         // %ebx is used oddly when compiling position independent code. All we do
         // is manually save it.
         asm volatile("   pushl %%ebx\n"
-                     "   movl %2, %%ebx\n"
-                     "1: cmpxchg8b %0\n"
+                     "1: movl %2, %%ebx\n"
+                     "   cmpxchg8b %0\n"
                      "   jne 1b\n"
                      "   popl %%ebx"
                      : "=m"(object->_nonatomic)
